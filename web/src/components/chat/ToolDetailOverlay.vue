@@ -1,5 +1,5 @@
 <template>
-  <BottomSheet :open="show" auto @close="$emit('close')">
+  <BottomSheet :open="show" auto panel-class="tool-detail-sheet" @close="$emit('close')">
     <template #header>
       <div class="tool-detail-header" :data-category="category">
         <component :is="headerIcon" :size="14" class="tool-detail-header-icon" />
@@ -94,6 +94,20 @@ function handleBodyClick(event) {
   event.stopPropagation()
 }
 </script>
+
+<style>
+/* 工具详情弹窗：高度由内容决定，上限避开状态栏，底部延伸到屏幕（非 scoped，因 Teleport 到 body） */
+.bs-panel.tool-detail-sheet {
+    top: auto !important;
+    bottom: 0 !important;
+    height: auto !important;
+    max-height: calc(100% - env(safe-area-inset-top, 0px) - 40px) !important;
+    margin-top: calc(env(safe-area-inset-top, 0px) + 40px) !important;
+}
+.bs-panel.tool-detail-sheet .tool-detail-body {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+</style>
 
 <style scoped>
 /* Header — tool-specific accent colors */
