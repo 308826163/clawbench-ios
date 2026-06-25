@@ -1,0 +1,209 @@
+﻿Diagnose log at 2026-06-23T15:21:54Z
+
+AppPath: D:\App\Git\mingw64\bin\git-credential-manager.exe
+InstallDir: D:\App\Git\mingw64\bin\
+Version: 2.7.3+5fa7116896c82164996a609accd1c5ad90fe730a
+
+------------
+Diagnostic: Environment
+Skipped: False
+Success: True
+Exception: None
+Log:
+OSType: Windows
+OSVersion: 10.0 (build 19045)
+Reading environment variables... OK
+ Variables:
+OneDriveConsumer=C:\Users\23611\OneDrive
+ANTHROPIC_DEFAULT_SONNET_MODEL_NAME=mimo-v2.5
+MSYSTEM=MINGW64
+ProgramW6432=C:\Program Files
+EXEPATH=D:\App\Git\bin
+PROCESSOR_IDENTIFIER=Intel64 Family 6 Model 158 Stepping 10, GenuineIntel
+TMP=C:\Users\23611\AppData\Local\Temp
+PROCESSOR_ARCHITECTURE=AMD64
+SYSTEMROOT=C:\WINDOWS
+PATHEXT=.COM;.EXE;.BAT;.CMD;.VBS;.VBE;.JS;.JSE;.WSF;.WSH;.MSC;.CPL
+ANTHROPIC_BASE_URL=https://token-plan-sgp.xiaomimimo.com/anthropic
+ANTHROPIC_DEFAULT_OPUS_MODEL_NAME=mimo-v2.5-pro
+USERDOMAIN=GIN
+PROCESSOR_REVISION=9e0a
+CLAUDE_CODE_EXECPATH=C:\Users\23611\.local\bin\claude.exe
+OLDPWD=C:/Users/23611
+ANTHROPIC_DEFAULT_OPUS_MODEL=mimo-v2.5-pro[1M]
+USERPROFILE=C:\Users\23611
+LOGONSERVER=\\GIN
+TEMP=C:\Users\23611\AppData\Local\Temp
+USERNAME=23611
+SHELL=D:\App\Git\bin\bash.exe
+CLAUDE_CODE_ENTRYPOINT=cli
+GIT_EXEC_PATH=D:/App/Git/mingw64/libexec/git-core
+ANTHROPIC_DEFAULT_HAIKU_MODEL_NAME=mimo-v2.5
+PLINK_PROTOCOL=ssh
+COMMONPROGRAMFILES=C:\Program Files\Common Files
+_=D:/App/Git/mingw64/bin/git
+NoDefaultCurrentDirectoryInExePath=1
+OneDrive=C:\Users\23611\OneDrive
+LOCALAPPDATA=C:\Users\23611\AppData\Local
+PATH=D:/App/Git/mingw64/libexec/git-core;C:\Users\23611\bin;D:\App\Git\mingw64\bin;D:\App\Git\usr\local\bin;D:\App\Git\usr\bin;D:\App\Git\usr\bin;D:\App\Git\mingw64\bin;D:\App\Git\usr\bin;C:\Users\23611\bin;C:\WINDOWS\system32;C:\WINDOWS;C:\WINDOWS\System32\Wbem;C:\WINDOWS\System32\WindowsPowerShell\v1.0;C:\WINDOWS\System32\OpenSSH;C:\Program Files (x86)\NVIDIA Corporation\PhysX\Common;C:\Program Files\NVIDIA Corporation\NVIDIA NvDLISR;D:\App\Git\cmd;D:\App\Node;C:\Users\23611\.local\bin;C:\Program Files\Go\bin;C:\WINDOWS\system32;C:\WINDOWS;C:\WINDOWS\System32\Wbem;C:\WINDOWS\System32\WindowsPowerShell\v1.0;C:\WINDOWS\System32\OpenSSH;C:\Program Files (x86)\NVIDIA Corporation\PhysX\Common;C:\Program Files\NVIDIA Corporation\NVIDIA NvDLISR;D:\App\Git\cmd;D:\App\Node;C:\Users\23611\AppData\Local\Programs\Python\Launcher;C:\Users\23611\AppData\Local\Microsoft\WindowsApps;C:\Users\23611\AppData\Local\Microsoft\WinGet\Links;C:\Users\23611\AppData\Roaming\npm;C:\Users\23611\AppData\Local\Microsoft\WinGet\Packages\jqlang.jq_Microsoft.Winget.Source_8wekyb3d8bbwe;C:\Users\23611\go\bin;C:\Users\23611\AppData\Local\GitHubDesktop\bin;D:\App\Git\usr\bin\vendor_perl;D:\App\Git\usr\bin\core_perl
+CommonProgramFiles(x86)=C:\Program Files (x86)\Common Files
+PROCESSOR_LEVEL=6
+ProgramData=C:\ProgramData
+ANTHROPIC_MODEL=mimo-v2.5
+AI_AGENT=claude-code_2-1-181_agent
+HOMEPATH=\Users\23611
+WT_SESSION=4ed4c8f6-b2e7-412a-8137-ea0375cbad89
+ANTHROPIC_AUTH_TOKEN=tp-sfpwtf4xy8x4d6moos7zihaukzwjoj0uzp9i3ha8pvwhf1ax
+CLAUDE_EFFORT=high
+ALLUSERSPROFILE=C:\ProgramData
+CommonProgramW6432=C:\Program Files\Common Files
+PAI_MODEL_DIR=D:\AI\Topaz Photo\Models\models
+PWD=D:/AI/BF/clawbench IOS/clawbench-ios
+TERM=xterm-256color
+WT_PROFILE_ID={61c54bbd-c2c6-5271-96e7-009a87ff44bf}
+COREPACK_ENABLE_AUTO_PIN=0
+PROGRAMFILES=C:\Program Files
+SHLVL=1
+SESSIONNAME=Console
+CLAUDE_CODE_CHILD_SESSION=1
+DriverData=C:\Windows\System32\Drivers\DriverData
+HOMEDRIVE=C:
+WSLENV=WT_SESSION:WT_PROFILE_ID:
+GIT_TRACE2_PARENT_SID=cc8cfa18-4dbe-42b2-b2df-159dd91d2b27
+NUMBER_OF_PROCESSORS=12
+OS=Windows_NT
+ANTHROPIC_DEFAULT_HAIKU_MODEL=mimo-v2.5
+GIT_EDITOR=true
+HOME=C:\Users\23611
+ProgramFiles(x86)=C:\Program Files (x86)
+SYSTEMDRIVE=C:
+PSModulePath=C:\Users\23611\Documents\WindowsPowerShell\Modules;C:\Program Files\WindowsPowerShell\Modules;C:\WINDOWS\system32\WindowsPowerShell\v1.0\Modules
+TMPDIR=C:\Users\23611\AppData\Local\Temp
+APPDATA=C:\Users\23611\AppData\Roaming
+ANTHROPIC_DEFAULT_SONNET_MODEL=mimo-v2.5[1M]
+COMPUTERNAME=GIN
+LC_CTYPE=C.UTF-8
+COMSPEC=C:\WINDOWS\system32\cmd.exe
+CLAUDE_CODE_SESSION_ID=b39aaf18-987a-4b67-a7a0-58b0e55bc3c5
+CLAUDECODE=1
+WINDIR=C:\WINDOWS
+USERDOMAIN_ROAMINGPROFILE=GIN
+asl.log=Destination=file
+PUBLIC=C:\Users\Public
+GOPATH=C:\Users\23611\go
+
+
+------------
+Diagnostic: File system
+Skipped: False
+Success: True
+Exception: None
+Log:
+Temporary directory is 'C:\Users\23611\AppData\Local\Temp\'...
+Checking basic file I/O...
+Writing to temporary file 'C:\Users\23611\AppData\Local\Temp\593348f3bd512f253764458e'... OK
+Reading from temporary file 'C:\Users\23611\AppData\Local\Temp\593348f3bd512f253764458e'... OK
+Deleting temporary file 'C:\Users\23611\AppData\Local\Temp\593348f3bd512f253764458e'... OK
+Testing IFileSystem instance...
+UserHomePath: C:\Users\23611
+UserDataDirectoryPath: C:\Users\23611\.gcm
+GetCurrentDirectory(): D:\AI\BF\clawbench IOS\clawbench-ios
+
+------------
+Diagnostic: Networking
+Skipped: False
+Success: True
+Exception: None
+Log:
+Checking networking and HTTP stack...
+Creating HTTP client... OK
+IsNetworkAvailable: True
+Sending HEAD request to http://example.com...Sending HEAD request to https://example.com... OK
+ OK
+Acquiring free TCP port... OK
+Testing local HTTP loopback connections...
+Creating new HTTP listener for http://localhost:60440/... OK
+Waiting for loopback connection... OK
+Writing response... OK
+Waiting for response data... OK
+Loopback connection data OK
+
+------------
+Diagnostic: Git
+Skipped: False
+Success: True
+Exception: None
+Log:
+Getting Git version... OK
+Git version is '2.54.0.windows.1'
+Locating current repository...Git repository at 'D:/AI/BF/clawbench IOS/clawbench-ios/.git'
+ OK
+Listing all Git configuration... OK
+Git configuration:
+file:D:/App/Git/etc/gitconfig	diff.astextplain.textconv=astextplain
+file:D:/App/Git/etc/gitconfig	filter.lfs.clean=git-lfs clean -- %f
+file:D:/App/Git/etc/gitconfig	filter.lfs.smudge=git-lfs smudge -- %f
+file:D:/App/Git/etc/gitconfig	filter.lfs.process=git-lfs filter-process
+file:D:/App/Git/etc/gitconfig	filter.lfs.required=true
+file:D:/App/Git/etc/gitconfig	http.sslbackend=schannel
+file:D:/App/Git/etc/gitconfig	core.autocrlf=true
+file:D:/App/Git/etc/gitconfig	core.fscache=true
+file:D:/App/Git/etc/gitconfig	core.symlinks=false
+file:D:/App/Git/etc/gitconfig	pull.rebase=false
+file:D:/App/Git/etc/gitconfig	credential.helper=manager
+file:D:/App/Git/etc/gitconfig	credential.https://dev.azure.com.usehttppath=true
+file:D:/App/Git/etc/gitconfig	init.defaultbranch=main
+file:C:/Users/23611/.gitconfig	http.sslbackend=openssl
+file:C:/Users/23611/.gitconfig	filter.lfs.clean=git-lfs clean -- %f
+file:C:/Users/23611/.gitconfig	filter.lfs.smudge=git-lfs smudge -- %f
+file:C:/Users/23611/.gitconfig	filter.lfs.process=git-lfs filter-process
+file:C:/Users/23611/.gitconfig	filter.lfs.required=true
+file:C:/Users/23611/.gitconfig	user.name=308826163
+file:C:/Users/23611/.gitconfig	user.email=64689358+308826163@users.noreply.github.com
+file:.git/config	core.repositoryformatversion=0
+file:.git/config	core.filemode=false
+file:.git/config	core.bare=false
+file:.git/config	core.logallrefupdates=true
+file:.git/config	core.symlinks=false
+file:.git/config	core.ignorecase=true
+file:.git/config	remote.origin.url=https://github.com/308826163/clawbench-ios.git
+file:.git/config	remote.origin.fetch=+refs/heads/*:refs/remotes/origin/*
+file:.git/config	branch.main.remote=origin
+file:.git/config	branch.main.merge=refs/heads/main
+
+
+------------
+Diagnostic: Credential storage
+Skipped: False
+Success: True
+Exception: None
+Log:
+ICredentialStore instance is of type: CredentialStore
+Writing test credential... OK
+Reading test credential... OK
+Deleting test credential... OK
+
+------------
+Diagnostic: Microsoft authentication (AAD/MSA)
+Skipped: False
+Success: True
+Exception: None
+Log:
+Broker is not enabled.
+Flow type is: Auto
+Gathering MSAL token cache data... OK
+CacheDirectory: C:\Users\23611\AppData\Local\.IdentityService
+CacheFileName: msal.cache
+CacheFilePath: C:\Users\23611\AppData\Local\.IdentityService\msal.cache
+Creating cache helper... OK
+Verifying MSAL token cache persistence... OK
+
+------------
+Diagnostic: GitHub API
+Skipped: False
+Success: True
+Exception: None
+Log:
+Using 'https://github.com/' as API target.
+Querying '/meta' endpoint... OK
+

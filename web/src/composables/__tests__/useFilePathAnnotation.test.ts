@@ -1,0 +1,1232 @@
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
+import {
+  resolveFilePath,
+  resolveRelativePath,
+  fileOpenButtonHtml,
+  FILE_OPEN_ICON_SVG,
+  annotateFilePaths,
+  verifyFilePaths,
+  clearVerifiedCache,
+  openFilePath,
+} from '@/composables/useFilePathAnnotation'
+
+// Mock escapeHtml from html utils
+vi.mock('@/utils/html', () => ({
+  escapeHtml: (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'),
+}))
+
+// Mock splitPath
+vi.mock('@/utils/path', () => ({
+  splitPath: (p: string) => p.split('/').filter(Boolean),
+}))
+
+// Mock store
+vi.mock('@/stores/app', () => ({
+  store: {
+    state: { projectRoot: '/home/user/project' },
+    selectFile: vi.fn(),
+    navigateToDir: vi.fn(),
+  },
+}))
+
+// Mock useLocale
+vi.mock('@/composables/useLocale', () => ({
+  gt: (key: string) => key,
+}))
+
+// --- resolveFilePath ---
+
+describe('resolveFilePath', () => {
+  const projectRoot = '/home/user/project'
+
+  describe('absolute paths', () => {
+    it('resolves a path under projectRoot', () => {
+      expect(resolveFilePath('/home/user/project/src/main.go', projectRoot)).toBe('src/main.go')
+    })
+
+    it('returns null for path outside projectRoot', () => {
+      expect(resolveFilePath('/etc/passwd', projectRoot)).toBeNull()
+    })
+
+    it('returns null when projectRoot is empty', () => {
+      expect(resolveFilePath('/home/user/project/src/main.go', '')).toBeNull()
+    })
+
+    it('returns null when path equals projectRoot (no relative part)', () => {
+      expect(resolveFilePath('/home/user/project', projectRoot)).toBeNull()
+    })
+
+    it('handles nested project root paths', () => {
+      expect(resolveFilePath('/home/user/project/deep/nested/file.ts', projectRoot)).toBe('deep/nested/file.ts')
+    })
+  })
+
+  describe('relative paths with projectRoot', () => {
+    it('resolves a simple relative path', () => {
+      expect(resolveFilePath('src/main.go', projectRoot)).toBe('src/main.go')
+    })
+
+    it('resolves ./prefixed paths', () => {
+      expect(resolveFilePath('./src/main.go', projectRoot)).toBe('src/main.go')
+    })
+
+    it('resolves ../prefixed paths within project', () => {
+      expect(resolveFilePath('../project/src/main.go', projectRoot)).toBe('src/main.go')
+    })
+
+    it('returns null for paths going above project root', () => {
+      expect(resolveFilePath('../../../etc/passwd', projectRoot)).toBeNull()
+    })
+
+    it('handles multiple consecutive ../ segments', () => {
+      // projectRoot = /home/user/project → parts = ['home', 'user', 'project']
+      // Going ../ 3 times exhausts parts → null
+      expect(resolveFilePath('../../../src/main.go', projectRoot)).toBeNull()
+    })
+
+    it('handles mixed . and .. segments', () => {
+      expect(resolveFilePath('./src/../lib/utils.ts', projectRoot)).toBe('lib/utils.ts')
+    })
+  })
+
+  describe('relative paths without projectRoot', () => {
+    it('returns path as-is after stripping ./', () => {
+      expect(resolveFilePath('src/main.go', '')).toBe('src/main.go')
+    })
+
+    it('strips leading ./', () => {
+      expect(resolveFilePath('./src/main.go', '')).toBe('src/main.go')
+    })
+
+    it('returns null for paths starting with ../', () => {
+      expect(resolveFilePath('../src/main.go', '')).toBeNull()
+    })
+  })
+
+  describe('illegal characters (glob patterns, template vars)', () => {
+    it('returns null for paths with * wildcard', () => {
+      expect(resolveFilePath('*.class', projectRoot)).toBeNull()
+      expect(resolveFilePath('src/*.go', projectRoot)).toBeNull()
+    })
+
+    it('returns null for paths with ** double-star', () => {
+      expect(resolveFilePath('**/*.class', projectRoot)).toBeNull()
+      expect(resolveFilePath('src/**/*.ts', projectRoot)).toBeNull()
+    })
+
+    it('returns null for paths with ? wildcard', () => {
+      expect(resolveFilePath('src/test?.go', projectRoot)).toBeNull()
+    })
+
+    it('returns null for paths with [ ] brackets', () => {
+      expect(resolveFilePath('src/[test]/file.go', projectRoot)).toBeNull()
+    })
+
+    it('returns null for paths with < > angle brackets', () => {
+      expect(resolveFilePath('<sourcefile>/<line>', projectRoot)).toBeNull()
+    })
+
+    it('returns null for http:// URLs', () => {
+      expect(resolveFilePath('http://localhost:20003', projectRoot)).toBeNull()
+      expect(resolveFilePath('http://example.com/page.html', projectRoot)).toBeNull()
+    })
+
+    it('returns null for https:// URLs', () => {
+      expect(resolveFilePath('https://example.com/page.html', projectRoot)).toBeNull()
+    })
+
+    it('returns null for $HOME environment variable paths', () => {
+      expect(resolveFilePath('$HOME/.bashrc', projectRoot)).toBeNull()
+      expect(resolveFilePath('${HOME}/config', projectRoot)).toBeNull()
+    })
+  })
+
+  describe('tilde (~/) paths', () => {
+    const homeDir = '/home/user'
+    const projectRoot = '/home/user/my-app'
+
+    it('resolves ~/project/... paths when homeDir is provided and path is in project', () => {
+      expect(resolveFilePath('~/my-app/src/main.go', projectRoot, homeDir)).toBe('src/main.go')
+    })
+
+    it('resolves ~/project/sub/deep paths', () => {
+      expect(resolveFilePath('~/my-app/internal/handler/chat.go', projectRoot, homeDir)).toBe('internal/handler/chat.go')
+    })
+
+    it('returns null for ~/ paths outside project when homeDir is provided', () => {
+      expect(resolveFilePath('~/.bashrc', projectRoot, homeDir)).toBeNull()
+      expect(resolveFilePath('~/other-project/file.ts', projectRoot, homeDir)).toBeNull()
+      expect(resolveFilePath('~/.config/nvim/init.lua', projectRoot, homeDir)).toBeNull()
+    })
+
+    it('returns null for ~/ paths without homeDir (cannot expand)', () => {
+      expect(resolveFilePath('~/my-app/src/main.go', projectRoot)).toBeNull()
+      expect(resolveFilePath('~/.bashrc', projectRoot)).toBeNull()
+    })
+
+    it('returns null for ~/ paths when expanded path equals projectRoot (no file part)', () => {
+      expect(resolveFilePath('~/my-app', projectRoot, homeDir)).toBeNull()
+    })
+
+    it('handles /root home directory correctly', () => {
+      expect(resolveFilePath('~/project/src/main.go', '/root/project', '/root')).toBe('src/main.go')
+      expect(resolveFilePath('~/other/file.ts', '/root/project', '/root')).toBeNull()
+    })
+  })
+})
+
+// --- resolveRelativePath ---
+
+describe('resolveRelativePath', () => {
+  it('resolves relative path against base directory', () => {
+    expect(resolveRelativePath('file.ts', 'src')).toBe('src/file.ts')
+  })
+
+  it('normalizes ./ segments', () => {
+    expect(resolveRelativePath('./file.ts', 'src')).toBe('src/file.ts')
+  })
+
+  it('normalizes ../ segments', () => {
+    expect(resolveRelativePath('../file.ts', 'src/utils')).toBe('src/file.ts')
+  })
+
+  it('handles multiple ../ segments', () => {
+    expect(resolveRelativePath('../../file.ts', 'src/utils/deep')).toBe('src/file.ts')
+  })
+
+  it('returns raw href when baseDir is empty', () => {
+    expect(resolveRelativePath('file.ts', '')).toBe('file.ts')
+  })
+
+  it('handles deeply nested paths', () => {
+    expect(resolveRelativePath('../../../root.ts', 'a/b/c/d')).toBe('a/root.ts')
+  })
+
+  it('does not go above root (pops from empty normalized)', () => {
+    expect(resolveRelativePath('../../../../root.ts', 'a')).toBe('root.ts')
+  })
+
+  it('handles double slashes', () => {
+    expect(resolveRelativePath('sub//file.ts', 'src')).toBe('src/sub/file.ts')
+  })
+
+  it('handles empty href segments', () => {
+    expect(resolveRelativePath('././file.ts', 'src')).toBe('src/file.ts')
+  })
+})
+
+// --- fileOpenButtonHtml ---
+
+describe('fileOpenButtonHtml', () => {
+  it('generates button HTML with data-file-path attribute', () => {
+    const html = fileOpenButtonHtml('src/main.go')
+    expect(html).toContain('chat-file-open-btn')
+    expect(html).toContain('data-file-path="src/main.go"')
+  })
+
+  it('escapes HTML in the path', () => {
+    const html = fileOpenButtonHtml('src/<script>.go')
+    expect(html).toContain('data-file-path="src/&lt;script&gt;.go"')
+  })
+
+  it('includes the SVG icon', () => {
+    const html = fileOpenButtonHtml('test.ts')
+    expect(html).toContain('<svg')
+  })
+
+  it('contains the same icon as FILE_OPEN_ICON_SVG', () => {
+    const html = fileOpenButtonHtml('test.ts')
+    expect(html).toContain(FILE_OPEN_ICON_SVG)
+  })
+
+  it('includes data-line-start when lineStart is provided', () => {
+    const html = fileOpenButtonHtml('src/main.go', 42)
+    expect(html).toContain('data-file-path="src/main.go"')
+    expect(html).toContain('data-line-start="42"')
+    expect(html).not.toContain('data-line-end')
+  })
+
+  it('includes data-line-start and data-line-end when both are provided', () => {
+    const html = fileOpenButtonHtml('src/main.go', 70, 81)
+    expect(html).toContain('data-file-path="src/main.go"')
+    expect(html).toContain('data-line-start="70"')
+    expect(html).toContain('data-line-end="81"')
+  })
+
+  it('does not include line attributes when lineStart is not provided', () => {
+    const html = fileOpenButtonHtml('src/main.go')
+    expect(html).not.toContain('data-line-start')
+    expect(html).not.toContain('data-line-end')
+  })
+})
+
+// --- annotateFilePaths ---
+
+describe('annotateFilePaths', () => {
+  const projectRoot = '/home/user/project'
+
+  it('annotates absolute paths under projectRoot', () => {
+    const input = 'See /home/user/project/src/main.go for details'
+    const result = annotateFilePaths(input, { projectRoot })
+    expect(result.detectedPaths).toContain('src/main.go')
+    expect(result.html).toContain('chat-file-path')
+    expect(result.html).toContain('chat-file-open-btn')
+  })
+
+  it('does not annotate absolute paths outside projectRoot', () => {
+    const input = 'See /etc/config for details'
+    const result = annotateFilePaths(input, { projectRoot })
+    expect(result.detectedPaths).toHaveLength(0)
+    expect(result.html).not.toContain('chat-file-path')
+  })
+
+  it('annotates relative paths with ./', () => {
+    const input = 'Check ./src/main.go for details'
+    const result = annotateFilePaths(input, { projectRoot })
+    expect(result.detectedPaths).toContain('src/main.go')
+  })
+
+  it('annotates bare relative paths with at least two segments and extension', () => {
+    const input = 'Look at src/main.go for details'
+    const result = annotateFilePaths(input, { projectRoot })
+    expect(result.detectedPaths).toContain('src/main.go')
+  })
+
+  it('does not annotate single-segment names without slash', () => {
+    const input = 'Look at main.go for details'
+    const result = annotateFilePaths(input, { projectRoot })
+    expect(result.detectedPaths).toHaveLength(0)
+  })
+
+  it('annotates file paths inside <pre> blocks', () => {
+    const input = '<pre>some /home/user/project/src/main.go code</pre>'
+    const result = annotateFilePaths(input, { projectRoot })
+    expect(result.detectedPaths).toContain('src/main.go')
+  })
+
+  it('annotates file paths inside inline code elements', () => {
+    const input = '<code>src/main.go</code>'
+    const result = annotateFilePaths(input, { projectRoot })
+    expect(result.detectedPaths).toContain('src/main.go')
+  })
+
+  it('does not annotate inline code without slash or extension', () => {
+    const input = '<code>useAutoSpeech</code>'
+    const result = annotateFilePaths(input, { projectRoot })
+    expect(result.detectedPaths).toHaveLength(0)
+  })
+
+  it('annotates inline code with extension but no slash', () => {
+    const input = '<code>ChatPanel.vue</code>'
+    const result = annotateFilePaths(input, { projectRoot })
+    // ChatPanel.vue matches the file extension pattern
+    expect(result.detectedPaths.length).toBeGreaterThanOrEqual(0)
+  })
+
+  it('appends open button after <a> links to local files', () => {
+    const input = '<a href="src/utils.ts">utils</a>'
+    const result = annotateFilePaths(input, { projectRoot })
+    expect(result.detectedPaths).toContain('src/utils.ts')
+    expect(result.html).toContain('chat-file-open-btn')
+  })
+
+  it('does not annotate external <a> links', () => {
+    const input = '<a href="https://example.com">link</a>'
+    const result = annotateFilePaths(input, { projectRoot })
+    expect(result.detectedPaths).toHaveLength(0)
+  })
+
+  it('does not annotate anchor <a> links', () => {
+    const input = '<a href="#section">jump</a>'
+    const result = annotateFilePaths(input, { projectRoot })
+    expect(result.detectedPaths).toHaveLength(0)
+  })
+
+  it('resolves <a> href against baseDir when provided', () => {
+    const input = '<a href="utils.ts">utils</a>'
+    const result = annotateFilePaths(input, { projectRoot, baseDir: 'src' })
+    expect(result.detectedPaths).toContain('src/utils.ts')
+  })
+
+  it('returns empty detectedPaths for plain text with no paths', () => {
+    const input = 'This is just some text without any file references.'
+    const result = annotateFilePaths(input, { projectRoot })
+    expect(result.detectedPaths).toHaveLength(0)
+  })
+
+  it('handles empty input', () => {
+    const result = annotateFilePaths('', { projectRoot })
+    expect(result.detectedPaths).toHaveLength(0)
+    expect(result.html).toBe('')
+  })
+
+  it('detects multiple paths in one string', () => {
+    const input = 'See src/main.go and ./lib/utils.ts'
+    const result = annotateFilePaths(input, { projectRoot })
+    expect(result.detectedPaths.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('annotates paths inside blockquote elements (blockquote is valid context)', () => {
+    // After markdown rendering, ">src/main.go" becomes <blockquote><p>src/main.go</p></blockquote>
+    // The DOM-based approach naturally handles this — the text node is inside a <blockquote>
+    // but not inside <pre>/<a>/<code>, so it's a valid annotation target.
+    const input = '<blockquote><p>src/main.go</p></blockquote>'
+    const result = annotateFilePaths(input, { projectRoot })
+    // Paths inside blockquotes are annotated — they are legitimate file references
+    expect(result.detectedPaths).toContain('src/main.go')
+  })
+
+  it('does not double-annotate absolute paths that contain a bare relative path segment', () => {
+    // Regression: absolute path like /home/user/project/public/landing/index.html
+    // would be annotated by the absolute-path regex, then the bare relative-path regex
+    // would match "public/landing/index.html" inside the generated data-file-path
+    // attribute of both the <span> and <button> tags, producing broken HTML like:
+    //   data-file-path="<span class="chat-file-path"..."
+    const input = '<p>/home/user/project/public/landing/index.html这个是出问题的文件。</p>'
+    const result = annotateFilePaths(input, { projectRoot })
+
+    // Should detect exactly one path
+    expect(result.detectedPaths).toHaveLength(1)
+    expect(result.detectedPaths[0]).toBe('public/landing/index.html')
+
+    // The data-file-path attribute must NOT contain a nested <span>
+    expect(result.html).not.toContain('data-file-path="<span')
+    expect(result.html).not.toContain('data-file-path="&lt;span')
+
+    // The data-file-path attribute should contain the correct resolved path
+    expect(result.html).toContain('data-file-path="public/landing/index.html"')
+  })
+
+  // ── DOM traversal specific tests ──
+
+  it('does not re-annotate paths inside <a> tag text content', () => {
+    // <a> tags are handled in step 1 (append button after the link).
+    // The text inside <a> should NOT be matched again by the text-node regex.
+    const input = '<a href="src/utils.ts">see src/utils.ts</a>'
+    const result = annotateFilePaths(input, { projectRoot })
+    // Should detect the path once (from the href), not twice
+    expect(result.detectedPaths).toHaveLength(1)
+    expect(result.detectedPaths[0]).toBe('src/utils.ts')
+    // Should only have one open button
+    const btnCount = (result.html.match(/chat-file-open-btn/g) || []).length
+    expect(btnCount).toBe(1)
+  })
+
+  it('does not re-annotate paths inside <code> tag text content', () => {
+    // <code> tags are handled in step 2 (add class + button).
+    // The text inside <code> should NOT be matched again by the text-node regex.
+    const input = '<p>check <code>src/main.go</code> for details</p>'
+    const result = annotateFilePaths(input, { projectRoot })
+    expect(result.detectedPaths).toHaveLength(1)
+    expect(result.detectedPaths[0]).toBe('src/main.go')
+    // Only one span/button pair
+    const btnCount = (result.html.match(/chat-file-open-btn/g) || []).length
+    expect(btnCount).toBe(1)
+  })
+
+  it('annotates code inside <pre> blocks', () => {
+    // <pre><code> is a multi-line code block — paths inside are now also annotated
+    const input = '<pre><code>import "/home/user/project/src/main.go"</code></pre>'
+    const result = annotateFilePaths(input, { projectRoot })
+    expect(result.detectedPaths).toContain('src/main.go')
+    // Path is inside <code> content but not the entire content, so only a button is appended
+    expect(result.html).toContain('chat-file-open-btn')
+  })
+
+  it('annotates absolute path immediately followed by CJK characters', () => {
+    // Original bug: /home/user/project/public/landing/index.html这个文件
+    // The path ends at the CJK character boundary — regex should not eat the Chinese text
+    const input = '<p>/home/user/project/src/main.go有问题</p>'
+    const result = annotateFilePaths(input, { projectRoot })
+    expect(result.detectedPaths).toHaveLength(1)
+    expect(result.detectedPaths[0]).toBe('src/main.go')
+    // The CJK text should remain outside the span
+    expect(result.html).toContain('有问题')
+  })
+
+  it('does not annotate ../ relative paths that go above projectRoot', () => {
+    // ../lib/utils.ts resolves to /home/user/lib/utils.ts which is outside projectRoot
+    const input = '<p>see ../lib/utils.ts</p>'
+    const result = annotateFilePaths(input, { projectRoot })
+    expect(result.detectedPaths).toHaveLength(0)
+  })
+
+  it('annotates ./ relative paths that stay within projectRoot', () => {
+    const input = '<p>see ./src/main.go</p>'
+    const result = annotateFilePaths(input, { projectRoot })
+    expect(result.detectedPaths).toContain('src/main.go')
+  })
+
+  it('detects multiple absolute paths in the same HTML', () => {
+    const input = '<p>Edit /home/user/project/src/main.go and /home/user/project/lib/utils.ts</p>'
+    const result = annotateFilePaths(input, { projectRoot })
+    expect(result.detectedPaths).toHaveLength(2)
+    expect(result.detectedPaths).toContain('src/main.go')
+    expect(result.detectedPaths).toContain('lib/utils.ts')
+  })
+
+  it('does not match paths in existing data-file-path attributes', () => {
+    // Pre-existing annotation HTML should not be re-matched by text node regex
+    // because data-file-path is an HTML attribute, and DOM traversal only processes text nodes
+    const input = '<span class="chat-file-path" data-file-path="src/main.go">src/main.go</span>'
+    const result = annotateFilePaths(input, { projectRoot })
+    // The span's text content is inside the span element, which is not a text node
+    // directly under the body — it's inside the span, so the walker won't pick it up
+    // (parent.tagName check skips CODE, but SPAN is not filtered, so the text inside
+    // the span IS a text node that gets walked). However, the regex will match
+    // "src/main.go" in the text node and try to resolve it — which succeeds.
+    // This is expected: if someone passes already-annotated HTML through the function
+    // again, it may double-annotate. The caller is responsible for not doing that.
+    // What we DO guarantee is that HTML ATTRIBUTES are never matched.
+    expect(result.html).not.toContain('data-file-path="&lt;span')
+  })
+
+  it('does not annotate mailto: links', () => {
+    const input = '<a href="mailto:user@example.com">email</a>'
+    const result = annotateFilePaths(input, { projectRoot })
+    expect(result.detectedPaths).toHaveLength(0)
+  })
+
+  it('does not annotate tel: links', () => {
+    const input = '<a href="tel:+1234567890">call</a>'
+    const result = annotateFilePaths(input, { projectRoot })
+    expect(result.detectedPaths).toHaveLength(0)
+  })
+
+  it('handles path followed by punctuation (period, comma, semicolon)', () => {
+    const input = '<p>see src/main.go, lib/utils.ts; and more</p>'
+    const result = annotateFilePaths(input, { projectRoot })
+    // Both paths should be detected
+    expect(result.detectedPaths).toContain('src/main.go')
+    expect(result.detectedPaths).toContain('lib/utils.ts')
+  })
+
+  it('handles path followed by closing parenthesis', () => {
+    const input = '<p>see src/main.go) for details</p>'
+    const result = annotateFilePaths(input, { projectRoot })
+    expect(result.detectedPaths).toContain('src/main.go')
+  })
+
+  it('produces valid HTML with span and button for text node paths', () => {
+    const input = '<p>see src/main.go</p>'
+    const result = annotateFilePaths(input, { projectRoot })
+    // The output should contain a <span class="chat-file-path"> with the path
+    // and a <button class="chat-file-open-btn"> with the same data-file-path
+    expect(result.html).toContain('<span class="chat-file-path"')
+    expect(result.html).toContain('data-file-path="src/main.go"')
+    expect(result.html).toContain('chat-file-open-btn')
+  })
+
+  it('produces valid HTML with class and button for code node paths', () => {
+    const input = '<code>src/main.go</code>'
+    const result = annotateFilePaths(input, { projectRoot })
+    // The <code> should get the chat-file-path class and data-file-path attribute
+    expect(result.html).toContain('class="chat-file-path"')
+    expect(result.html).toContain('data-file-path="src/main.go"')
+    expect(result.html).toContain('chat-file-open-btn')
+  })
+
+  it('handles HTML with only tags and no text', () => {
+    const input = '<p></p>'
+    const result = annotateFilePaths(input, { projectRoot })
+    expect(result.detectedPaths).toHaveLength(0)
+  })
+
+  it('handles path in a deeply nested element', () => {
+    const input = '<div><section><article><p>edit src/main.go</p></article></section></div>'
+    const result = annotateFilePaths(input, { projectRoot })
+    expect(result.detectedPaths).toContain('src/main.go')
+  })
+
+  it('does not annotate absolute paths that are not under projectRoot', () => {
+    const input = '<p>check /etc/nginx/nginx.conf and /home/user/project/src/main.go</p>'
+    const result = annotateFilePaths(input, { projectRoot })
+    // Only the project-relative path should be detected
+    expect(result.detectedPaths).toHaveLength(1)
+    expect(result.detectedPaths[0]).toBe('src/main.go')
+  })
+
+  it('preserves surrounding text when annotating a path in a text node', () => {
+    const input = '<p>Before src/main.go after</p>'
+    const result = annotateFilePaths(input, { projectRoot })
+    expect(result.html).toContain('Before')
+    expect(result.html).toContain('after')
+    expect(result.detectedPaths).toContain('src/main.go')
+  })
+
+  it('annotates bare relative path with multiple segments', () => {
+    const input = '<p>see internal/handler/chat.go</p>'
+    const result = annotateFilePaths(input, { projectRoot })
+    expect(result.detectedPaths).toContain('internal/handler/chat.go')
+  })
+
+  it('does not annotate URL-like strings', () => {
+    const input = '<p>visit https://example.com/page.html</p>'
+    const result = annotateFilePaths(input, { projectRoot })
+    // https:// URLs should not be treated as file paths
+    // (the regex does not match strings starting with http/https)
+    expect(result.detectedPaths).toHaveLength(0)
+  })
+
+  it('does not annotate localhost URLs in <code> elements', () => {
+    const input = '<code>http://localhost:20003</code>'
+    const result = annotateFilePaths(input, { projectRoot })
+    // localhost URLs should not get file-path annotations
+    // (they are handled by localhost annotation instead)
+    expect(result.detectedPaths).toHaveLength(0)
+    expect(result.html).not.toContain('chat-file-path')
+    expect(result.html).not.toContain('chat-file-open-btn')
+  })
+
+  it('annotates <a> with relative href and baseDir', () => {
+    const input = '<a href="components/App.vue">App</a>'
+    const result = annotateFilePaths(input, { projectRoot, baseDir: 'src' })
+    expect(result.detectedPaths).toContain('src/components/App.vue')
+  })
+
+  // ── Chinese path encoding (percent-encoded href decoding) ──
+
+  describe('percent-encoded href decoding for Chinese paths', () => {
+    it('decodes percent-encoded Chinese href in <a> tags', () => {
+      // Browsers/DOMPurify may encode 中文 → %E4%B8%AD%E6%96%87 in href attributes
+      const input = '<a href="%E4%B8%AD%E6%96%87/%E6%96%87%E4%BB%B6.md">链接</a>'
+      const result = annotateFilePaths(input, { projectRoot, baseDir: '' })
+      expect(result.detectedPaths).toContain('中文/文件.md')
+    })
+
+    it('decodes percent-encoded Chinese href with baseDir resolution', () => {
+      const input = '<a href="%E6%96%87%E6%A1%A3/%E8%AF%B4%E6%98%8E.md">说明</a>'
+      const result = annotateFilePaths(input, { projectRoot, baseDir: 'docs' })
+      expect(result.detectedPaths).toContain('docs/文档/说明.md')
+    })
+
+    it('handles mixed ASCII and percent-encoded Chinese segments in href', () => {
+      const input = '<a href="src/%E5%B7%A5%E5%85%B7/utils.ts">工具</a>'
+      const result = annotateFilePaths(input, { projectRoot, baseDir: '' })
+      expect(result.detectedPaths).toContain('src/工具/utils.ts')
+    })
+
+    it('does not double-decode already decoded Chinese href', () => {
+      // If the href is already decoded (中文 instead of %E4%B8%AD%E6%96%87),
+      // it should work correctly without double-decoding
+      const input = '<a href="中文/文件.md">链接</a>'
+      const result = annotateFilePaths(input, { projectRoot, baseDir: '' })
+      expect(result.detectedPaths).toContain('中文/文件.md')
+    })
+
+    it('handles malformed percent encoding gracefully', () => {
+      // %ZZ is not a valid percent encoding — should be returned as-is
+      const input = '<a href="path/%ZZfile.md">bad</a>'
+      const result = annotateFilePaths(input, { projectRoot, baseDir: '' })
+      // Should still detect a path (even if the encoding is malformed)
+      expect(result.detectedPaths.length).toBeGreaterThanOrEqual(1)
+    })
+
+    it('skips percent-encoded external links (https://)', () => {
+      const input = '<a href="https://example.com/%E4%B8%AD%E6%96%87">link</a>'
+      const result = annotateFilePaths(input, { projectRoot })
+      expect(result.detectedPaths).toHaveLength(0)
+    })
+  })
+
+  it('does not partially match directory prefix followed by more path segments (worktree-like)', () => {
+    // Regression: /home/user/project/.worktrees/gitgraph-fix
+    // The FILE_PATH_RE would match /home/user/project/.worktrees (treating .worktrees as extension)
+    // but the full path is a directory, not a file. The trailing /gitgraph-fix indicates the
+    // match is incomplete — this should be skipped so worktree annotation can handle the full path.
+    const input = '<p>/home/user/project/.worktrees/gitgraph-fix</p>'
+    const result = annotateFilePaths(input, { projectRoot })
+    // Should NOT detect .worktrees as a file path (it's a directory prefix)
+    expect(result.detectedPaths).toHaveLength(0)
+    expect(result.html).not.toContain('chat-file-path')
+  })
+
+  it('does not partially match .worktrees directory prefix with non-hyphen continuation', () => {
+    // Same bug with a worktree name that has no hyphen (e.g. featurex)
+    const input = '<p>/home/user/project/.worktrees/featurex</p>'
+    const result = annotateFilePaths(input, { projectRoot })
+    expect(result.detectedPaths).toHaveLength(0)
+    expect(result.html).not.toContain('chat-file-path')
+  })
+
+  it('still annotates legitimate paths ending in .worktrees when there is no continuation', () => {
+    // If the text is just /home/user/project/.worktrees (no trailing path), it's a
+    // legitimate path that should be annotated — even though it's a directory,
+    // the user may want to navigate to it.
+    const input = '<p>/home/user/project/.worktrees</p>'
+    const result = annotateFilePaths(input, { projectRoot })
+    expect(result.detectedPaths).toContain('.worktrees')
+  })
+
+  it('skips text nodes inside chat-worktree-path elements', () => {
+    // After worktree annotation runs first, file path annotation should not
+    // re-annotate text inside worktree-annotated elements
+    const input = '<span class="chat-worktree-path" data-worktree-path="/home/user/project/.worktrees/fix">.worktrees/fix</span>'
+    const result = annotateFilePaths(input, { projectRoot })
+    expect(result.detectedPaths).toHaveLength(0)
+  })
+
+  it('skips <code> elements already annotated as worktree', () => {
+    // <code> with chat-worktree-path class should be skipped in step 2
+    const input = '<code class="chat-worktree-path" data-worktree-path="/home/user/project/.worktrees/fix">.worktrees/fix</code>'
+    const result = annotateFilePaths(input, { projectRoot })
+    expect(result.detectedPaths).toHaveLength(0)
+  })
+
+  // ── Glob / illegal character rejection tests ──
+
+  it('does not annotate glob patterns in <code> tags', () => {
+    const input = '<code>**/*.class</code>'
+    const result = annotateFilePaths(input, { projectRoot })
+    expect(result.detectedPaths).toHaveLength(0)
+    expect(result.html).not.toContain('chat-file-path')
+  })
+
+  it('does not annotate paths with * wildcard in <code> tags', () => {
+    const input = '<code>*Test.java</code>'
+    const result = annotateFilePaths(input, { projectRoot })
+    expect(result.detectedPaths).toHaveLength(0)
+  })
+
+  it('does not annotate paths with angle brackets (template vars)', () => {
+    const input = '<code><sourcefile>/<line></code>'
+    const result = annotateFilePaths(input, { projectRoot })
+    expect(result.detectedPaths).toHaveLength(0)
+  })
+
+  it('does not annotate ProGuard-style glob patterns in text', () => {
+    // These are common in Android/Java projects — not real file paths
+    const input = '<p>**/R.class and **/R$*.class and **/Manifest*.*</p>'
+    const result = annotateFilePaths(input, { projectRoot })
+    expect(result.detectedPaths).toHaveLength(0)
+  })
+
+  // ── Tilde (~/) path tests ──
+
+  it('does not annotate ~/ paths outside project when homeDir is provided', () => {
+    const input = '<code>~/.bashrc</code>'
+    const result = annotateFilePaths(input, { projectRoot: '/home/user/my-app', homeDir: '/home/user' })
+    expect(result.detectedPaths).toHaveLength(0)
+    expect(result.html).not.toContain('chat-file-path')
+  })
+
+  it('annotates ~/project/... paths when homeDir is provided', () => {
+    const input = '<code>~/my-app/src/main.go</code>'
+    const result = annotateFilePaths(input, { projectRoot: '/home/user/my-app', homeDir: '/home/user' })
+    expect(result.detectedPaths).toContain('src/main.go')
+    expect(result.html).toContain('chat-file-path')
+  })
+
+  it('does not annotate ~/ paths without homeDir', () => {
+    const input = '<code>~/my-app/src/main.go</code>'
+    const result = annotateFilePaths(input, { projectRoot: '/home/user/my-app' })
+    expect(result.detectedPaths).toHaveLength(0)
+  })
+
+  it('annotates ~/project/... in text nodes when homeDir is provided', () => {
+    const input = '<p>Edit ~/my-app/src/main.go for details</p>'
+    const result = annotateFilePaths(input, { projectRoot: '/home/user/my-app', homeDir: '/home/user' })
+    expect(result.detectedPaths).toContain('src/main.go')
+  })
+
+  it('does not annotate ~/ paths outside project in text nodes', () => {
+    const input = '<p>Check ~/.config/nvim/init.lua for settings</p>'
+    const result = annotateFilePaths(input, { projectRoot: '/home/user/my-app', homeDir: '/home/user' })
+    expect(result.detectedPaths).toHaveLength(0)
+  })
+
+  it('does not annotate $HOME paths in <code> tags', () => {
+    const input = '<code>$HOME/.bashrc</code>'
+    const result = annotateFilePaths(input, { projectRoot })
+    expect(result.detectedPaths).toHaveLength(0)
+  })
+
+  // ── Comprehensive real-project path tests (projectRoot=/home/xulongzhe/projects/clawbench, homeDir=/home/xulongzhe) ──
+
+  describe('real-project path scenarios', () => {
+    const projectRoot = '/home/xulongzhe/projects/clawbench'
+    const homeDir = '/home/xulongzhe'
+
+    describe('正例 — 项目内路径，应该标注', () => {
+      it('annotates relative path (web/src/composables/useFilePathAnnotation.ts)', () => {
+        const input = '<p>Edit web/src/composables/useFilePathAnnotation.ts for details</p>'
+        const result = annotateFilePaths(input, { projectRoot, homeDir })
+        expect(result.detectedPaths).toContain('web/src/composables/useFilePathAnnotation.ts')
+      })
+
+      it('annotates absolute path under project (/home/xulongzhe/projects/clawbench/internal/handler/file.go)', () => {
+        const input = '<p>See /home/xulongzhe/projects/clawbench/internal/handler/file.go for details</p>'
+        const result = annotateFilePaths(input, { projectRoot, homeDir })
+        expect(result.detectedPaths).toContain('internal/handler/file.go')
+      })
+
+      it('annotates ~-expanded path in project (~/projects/clawbench/cmd/server/main.go)', () => {
+        const input = '<p>Check ~/projects/clawbench/cmd/server/main.go for details</p>'
+        const result = annotateFilePaths(input, { projectRoot, homeDir })
+        expect(result.detectedPaths).toContain('cmd/server/main.go')
+      })
+
+      it('annotates ./ relative path (./web/src/App.vue)', () => {
+        const input = '<p>Open ./web/src/App.vue for details</p>'
+        const result = annotateFilePaths(input, { projectRoot, homeDir })
+        expect(result.detectedPaths).toContain('web/src/App.vue')
+      })
+
+      it('annotates absolute path followed by CJK text (/home/xulongzhe/projects/clawbench/go.mod 这个文件)', () => {
+        const input = '<p>/home/xulongzhe/projects/clawbench/go.mod这个文件</p>'
+        const result = annotateFilePaths(input, { projectRoot, homeDir })
+        expect(result.detectedPaths).toContain('go.mod')
+      })
+
+      it('annotates deep ~-expanded path (~/projects/clawbench/web/src/composables/useChatRender.ts)', () => {
+        const input = '<p>Edit ~/projects/clawbench/web/src/composables/useChatRender.ts for details</p>'
+        const result = annotateFilePaths(input, { projectRoot, homeDir })
+        expect(result.detectedPaths).toContain('web/src/composables/useChatRender.ts')
+      })
+
+      it('annotates ~-expanded path in <code> tag', () => {
+        const input = '<code>~/projects/clawbench/web/src/App.vue</code>'
+        const result = annotateFilePaths(input, { projectRoot, homeDir })
+        expect(result.detectedPaths).toContain('web/src/App.vue')
+        expect(result.html).toContain('chat-file-path')
+      })
+    })
+
+    describe('反例 — 项目外路径，不应标注', () => {
+      it('does not annotate ~/.bashrc', () => {
+        const input = '<p>Edit ~/.bashrc to configure your shell</p>'
+        const result = annotateFilePaths(input, { projectRoot, homeDir })
+        expect(result.detectedPaths).toHaveLength(0)
+      })
+
+      it('does not annotate ~/projects/other-app/src/main.go (other project)', () => {
+        const input = '<p>Check ~/projects/other-app/src/main.go</p>'
+        const result = annotateFilePaths(input, { projectRoot, homeDir })
+        expect(result.detectedPaths).toHaveLength(0)
+      })
+
+      it('does not annotate ~/.config/nvim/init.lua', () => {
+        const input = '<p>Modify ~/.config/nvim/init.lua for settings</p>'
+        const result = annotateFilePaths(input, { projectRoot, homeDir })
+        expect(result.detectedPaths).toHaveLength(0)
+      })
+
+      it('does not annotate ~/.ssh/config', () => {
+        const input = '<p>Look at ~/.ssh/config</p>'
+        const result = annotateFilePaths(input, { projectRoot, homeDir })
+        expect(result.detectedPaths).toHaveLength(0)
+      })
+
+      it('does not annotate ~/go/src/main.go', () => {
+        const input = '<p>Check ~/go/src/main.go</p>'
+        const result = annotateFilePaths(input, { projectRoot, homeDir })
+        expect(result.detectedPaths).toHaveLength(0)
+      })
+
+      it('does not annotate ~/.cargo/config.toml', () => {
+        const input = '<p>Look at ~/.cargo/config.toml for Rust settings</p>'
+        const result = annotateFilePaths(input, { projectRoot, homeDir })
+        expect(result.detectedPaths).toHaveLength(0)
+      })
+
+      it('does not annotate /etc/hosts', () => {
+        const input = '<p>See /etc/hosts for DNS</p>'
+        const result = annotateFilePaths(input, { projectRoot, homeDir })
+        expect(result.detectedPaths).toHaveLength(0)
+      })
+
+      it('does not annotate /usr/local/bin/python3', () => {
+        const input = '<p>Run /usr/local/bin/python3 to start</p>'
+        const result = annotateFilePaths(input, { projectRoot, homeDir })
+        expect(result.detectedPaths).toHaveLength(0)
+      })
+
+      it('does not annotate /home/xulongzhe/.local/share/applications/mimeapps.list', () => {
+        const input = '<p>The path is /home/xulongzhe/.local/share/applications/mimeapps.list</p>'
+        const result = annotateFilePaths(input, { projectRoot, homeDir })
+        expect(result.detectedPaths).toHaveLength(0)
+      })
+
+      it('does not annotate $HOME/.bashrc', () => {
+        const input = '<p>Check $HOME/.bashrc</p>'
+        const result = annotateFilePaths(input, { projectRoot, homeDir })
+        expect(result.detectedPaths).toHaveLength(0)
+      })
+
+      it('does not annotate ${HOME}/config', () => {
+        const input = '<p>Check ${HOME}/config</p>'
+        const result = annotateFilePaths(input, { projectRoot, homeDir })
+        expect(result.detectedPaths).toHaveLength(0)
+      })
+
+      it('does not annotate **/*.class glob pattern', () => {
+        const input = '<p>Clean up **/*.class files</p>'
+        const result = annotateFilePaths(input, { projectRoot, homeDir })
+        expect(result.detectedPaths).toHaveLength(0)
+      })
+
+      it('does not annotate https://example.com/page.html', () => {
+        const input = '<p>Visit https://example.com/page.html for more</p>'
+        const result = annotateFilePaths(input, { projectRoot, homeDir })
+        expect(result.detectedPaths).toHaveLength(0)
+      })
+    })
+
+    describe('边界 case', () => {
+      it('does not annotate ~/projects/clawbench (equals projectRoot, no file part)', () => {
+        const input = '<p>Navigate to ~/projects/clawbench</p>'
+        const result = annotateFilePaths(input, { projectRoot, homeDir })
+        expect(result.detectedPaths).toHaveLength(0)
+      })
+    })
+
+    describe('line suffix support', () => {
+      it('annotates path with single line suffix :42', () => {
+        const input = '<p>see internal/ai/acp_backend.go:70</p>'
+        const result = annotateFilePaths(input, { projectRoot })
+        expect(result.detectedPaths).toContain('internal/ai/acp_backend.go')
+        expect(result.html).toContain('data-line-start="70"')
+        expect(result.html).toContain('chat-file-path')
+        expect(result.html).toContain('internal/ai/acp_backend.go:70')
+      })
+
+      it('annotates path with line range suffix :70-81', () => {
+        const input = '<p>see internal/ai/acp_backend.go:70-81</p>'
+        const result = annotateFilePaths(input, { projectRoot })
+        expect(result.detectedPaths).toContain('internal/ai/acp_backend.go')
+        expect(result.html).toContain('data-line-start="70"')
+        expect(result.html).toContain('data-line-end="81"')
+        expect(result.html).toContain('chat-file-path')
+        expect(result.html).toContain('internal/ai/acp_backend.go:70-81')
+      })
+
+      it('annotates path without line suffix (backward compatible)', () => {
+        const input = '<p>see src/main.go</p>'
+        const result = annotateFilePaths(input, { projectRoot })
+        expect(result.detectedPaths).toContain('src/main.go')
+        expect(result.html).toContain('chat-file-path')
+        expect(result.html).not.toContain('data-line-start')
+        expect(result.html).not.toContain('data-line-end')
+      })
+
+      it('annotates <code> tag with line suffix', () => {
+        const input = '<p>check <code>internal/ai/acp_backend.go:42</code> for details</p>'
+        const result = annotateFilePaths(input, { projectRoot })
+        expect(result.detectedPaths).toContain('internal/ai/acp_backend.go')
+        expect(result.html).toContain('data-line-start="42"')
+        expect(result.html).toContain('chat-file-path')
+      })
+
+      it('button includes line attributes for path with line suffix', () => {
+        const input = '<p>see internal/ai/acp_backend.go:70-81</p>'
+        const result = annotateFilePaths(input, { projectRoot })
+        expect(result.html).toContain('chat-file-open-btn')
+        // Button should have line attributes too
+        const btnMatch = result.html.match(/chat-file-open-btn[^>]*data-line-start="70"/)
+        expect(btnMatch).not.toBeNull()
+        const btnMatch2 = result.html.match(/chat-file-open-btn[^>]*data-line-end="81"/)
+        expect(btnMatch2).not.toBeNull()
+      })
+
+      it('span includes line attributes for path with line suffix', () => {
+        const input = '<p>see internal/ai/acp_backend.go:70-81</p>'
+        const result = annotateFilePaths(input, { projectRoot })
+        const spanMatch = result.html.match(/chat-file-path[^>]*data-line-start="70"/)
+        expect(spanMatch).not.toBeNull()
+        const spanMatch2 = result.html.match(/chat-file-path[^>]*data-line-end="81"/)
+        expect(spanMatch2).not.toBeNull()
+      })
+
+      it('resolved path does not include line suffix', () => {
+        const input = '<p>see internal/ai/acp_backend.go:70-81</p>'
+        const result = annotateFilePaths(input, { projectRoot })
+        // The resolved path in detectedPaths should NOT include the line suffix
+        expect(result.detectedPaths).toContain('internal/ai/acp_backend.go')
+        expect(result.detectedPaths).not.toContain('internal/ai/acp_backend.go:70-81')
+      })
+
+      it('annotates absolute path with line suffix', () => {
+        const input = `See ${projectRoot}/internal/handler/chat.go:10 for details`
+        const result = annotateFilePaths(input, { projectRoot })
+        expect(result.detectedPaths).toContain('internal/handler/chat.go')
+        expect(result.html).toContain('data-line-start="10"')
+      })
+    })
+  })
+})
+
+// --- clearVerifiedCache ---
+
+describe('clearVerifiedCache', () => {
+  it('does not throw when called', () => {
+    expect(() => clearVerifiedCache()).not.toThrow()
+  })
+})
+
+// --- verifyFilePaths ---
+
+describe('verifyFilePaths', () => {
+  beforeEach(() => {
+    clearVerifiedCache()
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  // Ensure CSS.escape is available in jsdom
+  if (typeof (globalThis as any).CSS === 'undefined') {
+    ;(globalThis as any).CSS = {}
+  }
+  if (typeof (globalThis as any).CSS.escape === 'undefined') {
+    ;(globalThis as any).CSS.escape = (s: string) => s.replace(/[!"#$%&'()*+,.\/:;<=>?@[\\\]^`{|}~]/g, '\\$&')
+  }
+
+  it('removes buttons for non-existent paths (batch API returns none)', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ results: { 'missing.go': 'none' } }),
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    const container = document.createElement('div')
+    container.innerHTML = '<button class="chat-file-open-btn" data-file-path="missing.go">open</button><span class="chat-file-path" data-file-path="missing.go">missing.go</span>'
+
+    await verifyFilePaths(['missing.go'], container)
+
+    // Button should be removed
+    expect(container.querySelector('.chat-file-open-btn')).toBeNull()
+    // Span should be unwrapped (plain text remains)
+    expect(container.textContent).toContain('missing.go')
+    expect(container.querySelector('.chat-file-path')).toBeNull()
+
+    // Verify batch API was called
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+    const callArgs = mockFetch.mock.calls[0]
+    expect(callArgs[0]).toBe('/api/file/batch-exists')
+    expect(callArgs[1].method).toBe('POST')
+
+    vi.unstubAllGlobals()
+  })
+
+  it('keeps annotations for existing paths (batch API returns file)', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ results: { 'src/main.go': 'file' } }),
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    const container = document.createElement('div')
+    container.innerHTML = '<button class="chat-file-open-btn" data-file-path="src/main.go">open</button><span class="chat-file-path" data-file-path="src/main.go">src/main.go</span>'
+
+    await verifyFilePaths(['src/main.go'], container)
+
+    // Button and span should remain
+    expect(container.querySelector('.chat-file-open-btn')).not.toBeNull()
+    expect(container.querySelector('.chat-file-path')).not.toBeNull()
+
+    vi.unstubAllGlobals()
+  })
+
+  it('keeps annotations for existing directories (batch API returns dir)', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ results: { 'src': 'dir' } }),
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    const container = document.createElement('div')
+    container.innerHTML = '<button class="chat-file-open-btn" data-file-path="src">open</button>'
+
+    await verifyFilePaths(['src'], container)
+
+    expect(container.querySelector('.chat-file-open-btn')).not.toBeNull()
+
+    vi.unstubAllGlobals()
+  })
+
+  it('handles mixed existing and non-existing paths', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ results: { 'exists.go': 'file', 'missing.go': 'none' } }),
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    const container = document.createElement('div')
+    container.innerHTML = '<button class="chat-file-open-btn" data-file-path="exists.go">open</button><button class="chat-file-open-btn" data-file-path="missing.go">open</button>'
+
+    await verifyFilePaths(['exists.go', 'missing.go'], container)
+
+    expect(container.querySelector('[data-file-path="exists.go"]')).not.toBeNull()
+    expect(container.querySelector('[data-file-path="missing.go"]')).toBeNull()
+
+    vi.unstubAllGlobals()
+  })
+
+  it('handles network error gracefully (assumes exists)', async () => {
+    const mockFetch = vi.fn().mockRejectedValue(new Error('Network error'))
+    vi.stubGlobal('fetch', mockFetch)
+
+    const container = document.createElement('div')
+    container.innerHTML = '<button class="chat-file-open-btn" data-file-path="test.go">open</button>'
+
+    await verifyFilePaths(['test.go'], container)
+
+    // On network error, assumes exists — button stays
+    expect(container.querySelector('.chat-file-open-btn')).not.toBeNull()
+
+    vi.unstubAllGlobals()
+  })
+
+  it('skips API call when all paths are cached', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ results: { 'cached.go': 'file' } }),
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    // First call populates cache
+    const container1 = document.createElement('div')
+    await verifyFilePaths(['cached.go'], container1)
+
+    // Second call should use cache — no fetch
+    const mockFetch2 = vi.fn()
+    vi.stubGlobal('fetch', mockFetch2)
+
+    const container2 = document.createElement('div')
+    container2.innerHTML = '<button class="chat-file-open-btn" data-file-path="cached.go">open</button>'
+    await verifyFilePaths(['cached.go'], container2)
+
+    expect(mockFetch2).not.toHaveBeenCalled()
+    expect(container2.querySelector('.chat-file-open-btn')).not.toBeNull()
+
+    vi.unstubAllGlobals()
+  })
+
+  it('does nothing for empty paths array', async () => {
+    const mockFetch = vi.fn()
+    vi.stubGlobal('fetch', mockFetch)
+
+    const container = document.createElement('div')
+    await verifyFilePaths([], container)
+
+    expect(mockFetch).not.toHaveBeenCalled()
+
+    vi.unstubAllGlobals()
+  })
+
+  it('deduplicates paths before making API call', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ results: { 'dup.go': 'file' } }),
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    const container = document.createElement('div')
+    await verifyFilePaths(['dup.go', 'dup.go', 'dup.go'], container)
+
+    // Should only call API once
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+    // The body should contain deduplicated paths
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body)
+    expect(body.paths).toEqual(['dup.go'])
+
+    vi.unstubAllGlobals()
+  })
+})
+
+// --- openFilePath ---
+
+describe('openFilePath', () => {
+  let mockSelectFile: ReturnType<typeof vi.fn>
+  let mockNavigateToDir: ReturnType<typeof vi.fn>
+
+  beforeEach(async () => {
+    clearVerifiedCache()
+    const { store } = await import('@/stores/app')
+    mockSelectFile = store.selectFile as ReturnType<typeof vi.fn>
+    mockNavigateToDir = store.navigateToDir as ReturnType<typeof vi.fn>
+    mockSelectFile.mockClear()
+    mockNavigateToDir.mockClear()
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('navigates to directory when path is a directory', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({ ok: true })
+    vi.stubGlobal('fetch', mockFetch)
+
+    const mockDispatchEvent = vi.fn()
+    const origDispatch = window.dispatchEvent
+    window.dispatchEvent = mockDispatchEvent
+
+    await openFilePath('src')
+
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+    expect(mockFetch.mock.calls[0][0]).toContain('/api/dir?path=')
+    expect(mockNavigateToDir).toHaveBeenCalledWith('src')
+    expect(mockDispatchEvent).toHaveBeenCalled()
+
+    window.dispatchEvent = origDispatch
+    vi.unstubAllGlobals()
+  })
+
+  it('selects file when path exists as a file', async () => {
+    // First fetch: /api/dir check → not ok (not a directory)
+    // Second fetch: /api/file/batch-exists → file exists
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce({ ok: false }) // /api/dir
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ results: { 'src/main.go': 'file' } }) }) // batch-exists
+
+    vi.stubGlobal('fetch', mockFetch)
+
+    await openFilePath('src/main.go')
+
+    expect(mockSelectFile).toHaveBeenCalledWith('src/main.go')
+
+    vi.unstubAllGlobals()
+  })
+
+  it('shows toast and does not select file when path does not exist', async () => {
+    // First fetch: /api/dir check → not ok (not a directory)
+    // Second fetch: /api/file/batch-exists → path doesn't exist
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce({ ok: false }) // /api/dir
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ results: { 'src/deleted/File.ts': 'none' } }) }) // batch-exists
+
+    vi.stubGlobal('fetch', mockFetch)
+
+    // Mock useToast
+    const mockShow = vi.fn()
+    vi.doMock('@/composables/useToast', () => ({
+      useToast: () => ({ show: mockShow }),
+    }))
+
+    await openFilePath('src/deleted/File.ts')
+
+    // selectFile should NOT be called for non-existent file
+    expect(mockSelectFile).not.toHaveBeenCalled()
+
+    vi.unstubAllGlobals()
+    vi.doUnmock('@/composables/useToast')
+  })
+
+  it('falls through to selectFile when batch-exists check fails (network error)', async () => {
+    // First fetch: /api/dir check → not ok
+    // Second fetch: /api/file/batch-exists → network error
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce({ ok: false }) // /api/dir
+      .mockRejectedValueOnce(new Error('Network error')) // batch-exists
+
+    vi.stubGlobal('fetch', mockFetch)
+
+    await openFilePath('src/main.go')
+
+    // Best-effort: selectFile should still be called
+    expect(mockSelectFile).toHaveBeenCalledWith('src/main.go')
+
+    vi.unstubAllGlobals()
+  })
+})

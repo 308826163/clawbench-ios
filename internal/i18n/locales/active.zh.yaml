@@ -1,0 +1,91 @@
+SessionNotRunning: 会话未在运行
+SessionStreamNotFound: 未找到会话流
+SessionStreamBusy: 会话流正在其他设备上查看
+SessionLimitReached: 已达会话数量上限（{{.MaxCount}}），请先删除旧会话
+SessionIdRequired: session_id 为必填项
+NewSession: 新会话
+NewSessionN: 新会话 {{.N}}
+FileMessage: 文件消息
+FileTooLarge: 文件过大
+TextTooLong: 文本过长，最多支持{{.MaxChars}}字符
+SummarizeFailed: 摘要生成失败，请稍后重试
+SynthesizeFailed: 语音合成失败，请稍后重试
+BackendCreateFailed: "创建 AI Backend 失败: {{.Error}}"
+StreamStartFailed: "启动流式输出失败: {{.Error}}"
+MethodNotAllowed: 方法不允许
+InvalidRequestBody: 请求体无效
+NotADirectory: 不是目录
+NotAFile: 不是文件
+NotAGitRepo: 不是Git仓库
+NoProjectSelected: 未选择项目
+AccessDenied: 访问被拒绝
+TerminalDisabled: 终端功能已关闭
+TerminalError: 终端错误
+TerminalCwdInvalid: 终端工作目录无效
+Unauthorized: 未授权
+InvalidPath: 无效路径
+PathTraversal: 检测到路径穿越攻击
+InternalError: 内部服务器错误
+SessionNotFound: 会话未找到
+NoAgentsAvailable: 没有可用的智能体
+MessageOrFilesRequired: 消息或文件为必填项
+TextRequired: 文本为必填项
+JobIdRequired: 任务ID为必填项
+FileNotFound: "文件未找到: {{.Path}}"
+ClientIdRequired: 客户端ID为必填项
+FileWatcherNotAvailable: 文件监视器不可用
+InvalidRole: 无效的角色
+MessageIdRequired: 消息ID为必填项
+InvalidRequest: 无效的请求
+SessionBackendNotFound: 会话后端未找到
+FileNotFoundShort: 文件未找到
+BrokenSymlink: "符号链接损坏：目标未找到 ({{.Target}})"
+DirectoryNotFound: 目录未找到
+InvalidFilePath: 无效的文件路径
+FileTooLargeOrInvalid: 文件过大或格式无效
+NoFileProvided: 未提供文件
+FileMustHaveExtension: 文件必须有扩展名
+FileTypeNotAllowed: "不允许的文件类型: {{.Ext}}"
+MissingPathOrName: 缺少路径或名称
+MissingPath: 缺少路径
+MissingName: 缺少名称
+FileAlreadyExists: 文件已存在
+MissingPathOrDest: 缺少路径或目标
+ArchiveFailed: 打包失败
+MissingShaOrPath: 缺少sha或路径
+MissingSha: 缺少sha
+AlreadyGitRepo: 已经是Git仓库
+NotAGitRepoShort: 不是Git仓库
+InvalidPortNumber: "无效的端口号: {{.Port}}"
+InvalidPortInQuery: 查询中的端口号无效
+TaskIdRequired: 任务ID为必填项
+TaskNotFound: 任务未找到
+TaskFieldsRequired: 名称、cron表达式、智能体ID和提示词为必填项
+TaskAlreadyRunning: 任务正在执行中，请等待完成后再触发
+TaskExecutionIdRequired: 执行实例ID为必填项
+TaskExecutionNotFound: 执行实例未找到或已结束
+DirectoryNameRequired: 目录名称为必填项
+LineNumberOutOfRange: 行号超出范围
+InvalidIndex: 无效的索引
+JobNotFound: 任务未找到
+AgentNotFound: 智能体未找到
+InvalidModelForAgent: 无效的模型
+InvalidThinkingEffort: 无效的思考深度级别
+InvalidSHA: 无效的提交SHA格式
+InvalidBranchName: 无效的分支名
+ModelDiscoveryNotSupported: 该智能体不支持模型自动发现
+ModelDiscoveryFailed: 模型发现未返回结果
+CLINotFound: 未找到CLI工具，请先安装
+CustomURLOpenAIFormat: OpenAI 格式的自定义 URL 应以 /chat/completions 结尾
+CustomURLAnthropicFormat: Anthropic 格式的自定义 URL 应以 /v1/messages 结尾
+CustomURLInvalid: URL 格式无效
+CustomURLInvalidScheme: URL 必须以 http:// 或 https:// 开头
+CustomURLInvalidHost: URL 缺少有效的主机名
+CustomURLUnrecognizedFormat: URL 路径须以 /chat/completions（OpenAI）或 /v1/messages（Anthropic）结尾
+PushTaskCompleted: AI任务完成
+PushSessionEnded: AI会话已结束
+PushScheduledTaskDone: 计划任务已完成
+PushPermissionPending: 需要审批
+NotFound: 未找到
+PermissionNotFound: 未找到待审批的权限请求
+ACPSessionNotFound: 该会话在智能体端已不存在
