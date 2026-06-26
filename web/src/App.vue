@@ -67,6 +67,7 @@
                 :sort-field="sortField"
                 :sort-dir="sortDir"
                 :dir-loading="store.state.dirLoading"
+                :active="activeTab === 'browse'"
                 @navigate-dir="handleNavigateDir"
                 @select-file="handleBrowseSelectFile"
                 @toggle-sort="handleToggleSort"

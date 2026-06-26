@@ -474,8 +474,8 @@ watch(() => props.active, async (val) => {
     identity.sessionDrawerOpen.value = false
     toolDetailOverlay.value.show = false
   } else {
-    // Open/Re-open: load history (with overlay) and fix stale layout state from v-show display:none
-    await session.loadHistory(false, true)
+    // Open/Re-open: load history (without overlay) and fix stale layout state from v-show display:none
+    await session.loadHistory(false, false)
     // Bump layoutRefreshKey AFTER loadHistory so ChatMessageItem re-checks
     // collapse state with the fresh messages and valid scrollHeight.
     nextTick(() => {

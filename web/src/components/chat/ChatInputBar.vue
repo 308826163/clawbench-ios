@@ -1317,11 +1317,11 @@ defineExpose({
 .chat-input-container {
   display: flex;
   flex-direction: column;
-  background: var(--bg-tertiary, #f0f0f0);
+  background: #D1D1D6; /* Apple 系统灰色（稍深） */
   flex: none;
   min-width: 0;
-  border: none;
-  border-radius: 20px;
+  border: 0.5px solid #C8C8CC;
+  border-radius: 22px; /* 药丸形状 */
   overflow: hidden;
   position: relative;
   transition: background 0.2s, box-shadow 0.2s;
@@ -1330,6 +1330,12 @@ defineExpose({
 .chat-input-container:focus-within {
   background: var(--bg-primary, #fff);
   box-shadow: 0 0 0 1px var(--accent-color, #0066cc);
+}
+
+/* 深色模式：只加边框 */
+[data-theme="dark"] .chat-input-container {
+  border: 0.5px solid #38383A;
+  background: var(--bg-tertiary, #f0f0f0);
 }
 
 .chat-input-container.drag-over {

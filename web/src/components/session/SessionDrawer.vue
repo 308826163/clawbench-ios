@@ -1,5 +1,5 @@
 <template>
-  <BottomSheet ref="bottomSheetRef" :open="open" auto panel-class="session-sheet" :title="t('session.title')" @close="$emit('close')">
+  <BottomSheet ref="bottomSheetRef" :open="open" :ready="ready" auto panel-class="session-sheet" :title="t('session.title')" @close="$emit('close')">
     <template #header>
       <Bot :size="16" class="bs-header-icon" />
       <span class="bs-header-title">{{ t('session.title') }}</span>
@@ -109,6 +109,7 @@ const emit = defineEmits(['close', 'select', 'create', 'delete'])
 const bottomSheetRef = ref(null)
 const sessions = ref([])
 const loading = ref(false)
+const ready = ref(false)
 const loadingMore = ref(false)
 const hasMore = ref(false)
 const listRef = ref(null)
@@ -295,7 +296,11 @@ function addSessionLocally(session) {
 // while the drawer is open (e.g. after a successful delete).
 watch(() => props.open, async (val) => {
   if (val) {
+    ready.value = false  // 显示遮罩，不显示面板
     await Promise.all([loadSessions(), loadAgents()])
+    ready.value = true   // 数据就绪，面板滑入
+  } else {
+    ready.value = false
   }
 })
 watch(() => store.state.sessionCount, async () => {
@@ -328,7 +333,7 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 0;
   padding: 0;
-  min-height: 0;
+  min-height: 300px;
   overflow-y: auto;
   flex: 1;
 }

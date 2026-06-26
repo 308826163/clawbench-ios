@@ -100,17 +100,14 @@
       @contextmenu.prevent="handleCtxMenu"
     >
       <div class="file-list-inner">
-      <Transition name="loading-fade">
-        <div v-if="dirLoading" class="loading-mask">
-          <div class="loading-mask-spinner"></div>
-        </div>
-      </Transition>
+      <!-- 骨架屏：加载时或切换 tab 时显示 -->
+      <SkeletonList v-if="dirLoading || tabSwitching" :count="8" />
       <div v-if="filteredEntries.length === 0 && !dirLoading" class="empty-state">
         <Folder :size="48" />
         <p>{{ currentDir ? t('file.emptyDir') : t('file.noFiles') }}</p>
       </div>
 
-      <template v-for="entry in visibleEntries" :key="entry.name">
+      <template v-if="!dirLoading && !tabSwitching" v-for="entry in visibleEntries" :key="entry.name">
         <!-- Directory -->
         <div v-if="entry.type === 'dir'"
           v-long-press="(e) => onLongPress(entry, e)"
@@ -312,6 +309,7 @@ import { useToast } from '@/composables/useToast.ts'
 import { useDirStack } from '@/composables/useDirStack'
 import { useFileNavStack } from '@/composables/useFileNavStack'
 import SearchInput from '@/components/common/SearchInput.vue'
+import SkeletonList from '@/components/common/SkeletonList.vue'
 import DirBreadcrumb from './DirBreadcrumb.vue'
 
 const toast = inject('toast', null)
@@ -359,6 +357,7 @@ const props = defineProps({
     sortField: String,
     sortDir: String,
     dirLoading: Boolean,
+    active: Boolean,
 })
 
 const emit = defineEmits(['navigateDir', 'navigateBack', 'selectFile', 'toggleSort', 'toggleHidden', 'rename', 'delete', 'refresh', 'openTerminal', 'batchDelete'])
@@ -367,6 +366,15 @@ const emit = defineEmits(['navigateDir', 'navigateBack', 'selectFile', 'toggleSo
 const searchQuery = ref('')
 const sortMenuOpen = ref(false)
 const moreMenuOpen = ref(false)
+
+// 切换 tab 时短暂显示骨架屏，掩盖重新渲染的闪烁
+const tabSwitching = ref(false)
+watch(() => props.active, (val) => {
+  if (val) {
+    tabSwitching.value = true
+    setTimeout(() => { tabSwitching.value = false }, 200)
+  }
+})
 
 // ── View mode (list / grid) from settings config ──
 const viewMode = ref(localConfig.fileView || 'list')

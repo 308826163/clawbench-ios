@@ -1173,6 +1173,7 @@ defineExpose({ activate: () => {}, deactivate: () => {}, keyboardHeight: viewpor
   flex-shrink: 0;
   background: var(--bg-secondary);
   border-top: 1px solid color-mix(in srgb, var(--border-color) 40%, transparent);
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 27px); /* 避开导航栏 */
   --toolbar-key-hover: color-mix(in srgb, var(--text-primary) 7%, transparent);
   --toolbar-key-active: color-mix(in srgb, var(--text-primary) 12%, transparent);
   --toolbar-key-text: color-mix(in srgb, var(--text-primary) 72%, transparent);

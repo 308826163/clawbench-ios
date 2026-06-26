@@ -7,7 +7,7 @@
       :class="{ 'bs-leaving': leaving, 'bs-instant': instant, 'bs-fullscreen': fullScreen }"
       @click.self="handleClose"
     >
-      <div ref="panelRef" class="bs-panel" :class="[panelClass, { 'bs-leaving': leaving, 'bs-instant': instant, 'bs-compact': compact, 'bs-auto': auto, 'bs-handle-only': handleOnly }]" :style="dragOffset > 0 ? { transform: `translateY(${dragOffset}px)`, transition: isDragging ? 'none' : undefined } : {}">
+      <div ref="panelRef" class="bs-panel" :class="[panelClass, { 'bs-leaving': leaving, 'bs-instant': instant, 'bs-compact': compact, 'bs-auto': auto, 'bs-handle-only': handleOnly, 'bs-not-ready': !ready }]" :style="dragOffset > 0 ? { transform: `translateY(${dragOffset}px)`, transition: isDragging ? 'none' : undefined } : {}">
         <!-- Header：拖拽手柄区域支持下滑收起 -->
         <div v-if="!noHeader" class="bs-header" :class="{ 'bs-header-handle-only': handleOnly }" @click="handleClose" @touchstart.passive="onDragStart" @touchmove.passive="onDragMove" @touchend="onDragEnd">
           <div class="bs-handle" />
@@ -44,6 +44,10 @@ const props = defineProps({
   handleOnly: Boolean, // 仅显示拖拽手柄，无标题栏
   fullScreen: Boolean, // overlay 延伸到屏幕底部（覆盖导航栏）
   panelClass: String, // 自定义面板类名
+  ready: {           // 面板是否就绪（false 时显示遮罩但不滑入面板）
+    type: Boolean,
+    default: true,
+  },
 })
 
 const emit = defineEmits(['close'])
@@ -192,9 +196,16 @@ defineExpose({
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  animation: bs-slideUp 0.25s ease;
+  transform: translateY(100%);
   transition: transform 0.25s ease;
 }
+
+/* 数据就绪后，滑入屏幕 */
+.bs-panel:not(.bs-not-ready) {
+  transform: translateY(0);
+}
+
+/* 数据未就绪时，面板隐藏在屏幕外（已是默认状态，无需额外样式） */
 
 /* Light Theme Panel */
 [data-theme="light"] .bs-panel {

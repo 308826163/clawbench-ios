@@ -71,12 +71,14 @@ function handleHeaderClick() {
   background: var(--bg-secondary, #fff);
   display: flex;
   flex-direction: column;
+  visibility: hidden;
   opacity: 0;
   transition: opacity 300ms ease, transform 300ms ease;
   pointer-events: none;
 }
 
 .tab-panel-active {
+  visibility: visible;
   opacity: 1;
   transform: translateX(0);
   pointer-events: auto;

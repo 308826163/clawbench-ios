@@ -24,7 +24,7 @@
 
     <!-- Content -->
     <div class="dialog-content">
-      <div v-if="loading" class="dialog-loading">{{ t('common.loading') }}</div>
+      <SkeletonList v-if="loading" :count="6" />
       <div v-else-if="displayItems.length === 0" class="dialog-empty">{{ searchQuery ? t('projectDialog.noMatchDirs') : t('projectDialog.emptyDir') }}</div>
       <div
         v-else
@@ -62,6 +62,7 @@ import { ref, computed, watch, inject } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ModalDialog from './common/ModalDialog.vue'
 import SearchInput from './common/SearchInput.vue'
+import SkeletonList from './common/SkeletonList.vue'
 import DirBreadcrumb from './file/DirBreadcrumb.vue'
 import { baseName } from '@/utils/path.ts'
 import { useDialog } from '@/composables/useDialog.ts'
