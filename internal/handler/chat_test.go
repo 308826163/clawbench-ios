@@ -2114,7 +2114,7 @@ func TestBuildChatRequest_ModelOverride_FromSession(t *testing.T) {
 	assert.NoError(t, err)
 
 	// User explicitly selects a model → handler calls UpdateSessionModel
-	_ = service.UpdateSessionModel(sessionID, "claude-sonnet-4-6")
+	_ = service.UpdateSessionModel(sessionID, "claude-sonnet-4-6", "Claude Sonnet")
 
 	// buildChatRequest with no modelOverride should use agent default,
 	// NOT the session model (session model is for frontend display;
@@ -2152,7 +2152,7 @@ func TestBuildChatRequestFromQueue_UsesSessionModel(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Simulate user sending a message with explicit model → handler calls UpdateSessionModel
-	_ = service.UpdateSessionModel(sessionID, "claude-sonnet-4-6")
+	_ = service.UpdateSessionModel(sessionID, "claude-sonnet-4-6", "Claude Sonnet")
 
 	// buildChatRequestFromQueue should use the session model
 	qMsg := model.QueuedMessage{Text: "next message", CreatedAt: time.Now().Format(time.RFC3339)}
@@ -2306,7 +2306,7 @@ func TestAIChat_Get_NoSessionID_SessionInfoFieldsPopulated(t *testing.T) {
 	sessionID, err := service.CreateSession(env.ProjectDir, "codebuddy", "Info Session", "codebuddy", "", "default", "chat")
 	assert.NoError(t, err)
 	// Set model explicitly
-	_ = service.UpdateSessionModel(sessionID, "glm-5.1")
+	_ = service.UpdateSessionModel(sessionID, "glm-5.1", "GLM-5.1")
 
 	// GET without session_id — should find this session via GetLatestSessionID
 	req := newRequest(t, http.MethodGet, "/api/ai/chat?limit=20", nil)

@@ -588,6 +588,7 @@ onUnmounted(() => {
     cursor: pointer;
     transition: background 0.1s;
     font-size: 12px;
+    color: var(--text-primary);
 }
 
 .project-dropdown .dropdown-item:hover {

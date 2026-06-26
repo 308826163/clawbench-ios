@@ -111,7 +111,7 @@ onMounted(refresh)
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: var(--bg-primary, #ffffff);
+  background: var(--bg-secondary, #f8f9fa);
 }
 
 /* Compact header — matches detail/form/history pages */

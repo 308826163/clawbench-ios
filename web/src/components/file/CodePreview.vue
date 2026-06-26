@@ -207,6 +207,11 @@ watch(
     user-select: text;
     scrollbar-width: thin;
 }
+
+/* 深色模式：代码/文本默认文字颜色 */
+[data-theme="dark"] .raw-content-pre {
+    color: var(--text-primary);
+}
 .raw-content-pre::-webkit-scrollbar {
     width: 4px;
     height: 4px;

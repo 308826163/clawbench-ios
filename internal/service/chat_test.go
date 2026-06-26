@@ -2587,7 +2587,7 @@ func TestUpdateSessionModel(t *testing.T) {
 
 	sid := helperCreateSession(t, "/project", "claude", "Model Test")
 
-	err := service.UpdateSessionModel(sid, "gpt-4o")
+	err := service.UpdateSessionModel(sid, "gpt-4o", "GPT-4o")
 	assert.NoError(t, err)
 
 	modelID := service.GetSessionModel(sid)
@@ -2597,7 +2597,7 @@ func TestUpdateSessionModel(t *testing.T) {
 func TestUpdateSessionModel_NonExistent(t *testing.T) {
 	setupDB(t)
 
-	err := service.UpdateSessionModel("non-existent", "gpt-4o")
+	err := service.UpdateSessionModel("non-existent", "gpt-4o", "GPT-4o")
 	assert.NoError(t, err) // UPDATE on non-existent row is a no-op
 }
 

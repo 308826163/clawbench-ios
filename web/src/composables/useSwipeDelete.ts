@@ -1,6 +1,9 @@
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 
 export const DELETE_WIDTH = 70 // px – width of the revealed delete button area
+
+// 全局事件总线：关闭其他 useSwipeDelete 实例
+const REVEAL_EVENT = 'swipe-delete-reveal'
 
 export function useSwipeDelete() {
   const offset = ref(0) // current translateX offset (0 = closed, -DELETE_WIDTH = fully revealed)
@@ -11,9 +14,31 @@ export function useSwipeDelete() {
   let startTime = 0
   let dragging = false
   let directionLocked: 'h' | 'v' | null = null
+  let revealTime = 0
 
   const SWIPE_THRESHOLD = 20 // px to lock direction
   const MAX_DURATION = 400 // ms
+
+  // 关闭其他已展开的实例
+  function closeOthers() {
+    revealTime = Date.now()
+    window.dispatchEvent(new CustomEvent(REVEAL_EVENT))
+  }
+
+  function onCloseOthers() {
+    // 忽略自己触发的事件（100ms 内）
+    if (isRevealed.value && Date.now() - revealTime > 100) {
+      close()
+    }
+  }
+
+  onMounted(() => {
+    window.addEventListener(REVEAL_EVENT, onCloseOthers)
+  })
+
+  onUnmounted(() => {
+    window.removeEventListener(REVEAL_EVENT, onCloseOthers)
+  })
 
   function onTouchStart(e: TouchEvent) {
     const touch = e.touches[0]
@@ -84,6 +109,8 @@ export function useSwipeDelete() {
   function snapOpen() {
     offset.value = -DELETE_WIDTH
     isRevealed.value = true
+    // 关闭其他已展开的实例
+    closeOthers()
   }
 
   function close() {

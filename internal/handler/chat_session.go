@@ -217,11 +217,12 @@ func ServeAISessionUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct {
-		ModeID         string `json:"modeId"`
-		ThinkingEffort string `json:"thinkingEffort"`
-		ModelID        string `json:"modelId"`
-		Transport      string `json:"transport"`
-		AutoApprove    *bool  `json:"autoApprove"` // pointer: distinguish "not sent" from false
+		ModeID            string `json:"modeId"`
+		ThinkingEffort    string `json:"thinkingEffort"`
+		ModelID           string `json:"modelId"`
+		ModelDisplayName  string `json:"modelDisplayName"`
+		Transport         string `json:"transport"`
+		AutoApprove       *bool  `json:"autoApprove"` // pointer: distinguish "not sent" from false
 	}
 	if !decodeJSON(w, r, &req) {
 		return
@@ -252,7 +253,7 @@ func ServeAISessionUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.ModelID != "" {
 		//nolint:errcheck,gosec // best-effort persistence; failure is non-fatal for an idempotent update
-		service.UpdateSessionModel(sessionID, req.ModelID)
+		service.UpdateSessionModel(sessionID, req.ModelID, req.ModelDisplayName)
 		// Sync model change to ACP agent so it uses the correct model
 		if conn := ai.GetACPConnManager().GetConn(sessionID); conn != nil {
 			go func() {

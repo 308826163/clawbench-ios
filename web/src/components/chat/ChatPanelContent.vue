@@ -550,7 +550,7 @@ function handleSwitchModel(model) {
   identity.currentModelId.value = model.id
   identity.currentModelName.value = model.name
   // Persist model selection immediately so it survives page reload
-  persistSessionUpdate({ modelId: model.id })
+  persistSessionUpdate({ modelId: model.id, modelDisplayName: model.name })
 }
 
 function handleSwitchThinkingEffort(level) {

@@ -1,10 +1,5 @@
 <template>
   <div>
-    <!-- ====== 临时平台标记（验证完删除） ====== -->
-    <div v-if="isIOSApp()" style="position:fixed;top:8px;left:8px;z-index:99999;background:#ff3b30;color:#fff;font-size:11px;padding:3px 8px;border-radius:10px;font-weight:600;pointer-events:none;">iOS APP</div>
-    <div v-if="isDesktopWeb()" style="position:fixed;top:8px;left:8px;z-index:99999;background:#34c759;color:#fff;font-size:11px;padding:3px 8px;border-radius:10px;font-weight:600;pointer-events:none;">Desktop Web</div>
-    <!-- ====== /临时平台标记 ====== -->
-
     <!-- SVG Gooey Filter for Liquid Glass effect — iOS APP 专属 -->
     <svg v-if="isIOSApp()" style="position: absolute; width: 0; height: 0;" aria-hidden="true">
       <defs>
@@ -280,7 +275,7 @@ import { ref, computed, watch, onMounted, onUnmounted, provide, nextTick } from 
 import { useI18n } from 'vue-i18n'
 import { useSettingsConfig } from '@/composables/useSettingsConfig'
 import { formatBadgeCount } from './utils/format.ts'
-import { isIOSApp, isDesktopWeb } from '@/utils/platformDetect.ts'
+import { isIOSApp } from '@/utils/platformDetect.ts'
 import { MessageSquare, FolderOpen, GitBranch, EthernetPort, Terminal as TerminalIcon, CalendarClock, MoreHorizontal, Settings, RotateCcw } from 'lucide-vue-next'
 import IconMessageCircle from './components/common/IconMessageCircle.vue'
 import IconFolderOpen from './components/common/IconFolderOpen.vue'
@@ -518,74 +513,6 @@ onMounted(() => {
   }
 })
 
-/** Handle clawbench-open-session event from Android push notification tap */
-function handleOpenSession(e) {
-  const detail = e?.detail
-  console.log('[ClawBench] clawbench-open-session event received, detail=', detail)
-  if (!detail?.sessionId) {
-    console.warn('[ClawBench] clawbench-open-session: no sessionId in detail, ignoring')
-    return
-  }
-  const { sessionId, projectPath } = detail
-  console.log('[ClawBench] clawbench-open-session: sessionId=', sessionId, 'projectPath=', projectPath, 'currentProject=', store.state.projectRoot)
-  if (projectPath && projectPath !== store.state.projectRoot) {
-    // Cross-project: hot switch without page reload
-    console.log('[ClawBench] cross-project navigation, switching to', projectPath)
-    hotSwitchProject(projectPath, sessionId).catch(() => {
-      // If project switch fails, try same-project switch as fallback
-      console.warn('[ClawBench] project switch failed, falling back to same-project switch')
-      switchTab('chat')
-      sessionIdentity.switchSession(sessionId)
-    })
-  } else {
-    // Same project: lightweight switch
-    console.log('[ClawBench] same-project navigation, switching to session', sessionId)
-    switchTab('chat')
-    sessionIdentity.switchSession(sessionId)
-  }
-}
-
-/** Handle clawbench-open-task event from Android push notification tap (task execution) */
-function handleOpenTask(e) {
-  const detail = e?.detail
-  console.log('[ClawBench] clawbench-open-task event received, detail=', detail)
-  if (!detail?.taskId) {
-    console.warn('[ClawBench] clawbench-open-task: no taskId in detail, ignoring')
-    return
-  }
-  const { taskId, executionId, projectPath } = detail
-  console.log('[ClawBench] clawbench-open-task: taskId=', taskId, 'executionId=', executionId, 'currentProject=', store.state.projectRoot)
-
-  const navigateToTask = () => {
-    switchTab('tasks')
-    navigateToTaskHistory(Number(taskId))
-    if (executionId) {
-      // openExecDetail without execData will auto-fetch from API via refreshExecDetail
-      openExecDetail(executionId)
-    }
-  }
-
-  if (projectPath && projectPath !== store.state.projectRoot) {
-    // Cross-project: switch project, store pending task navigation, then reload
-    console.log('[ClawBench] cross-project navigation, switching to', projectPath)
-    localStorage.setItem('clawbenchPendingNav', JSON.stringify({ taskId, executionId }))
-    fetch('/api/project', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: projectPath }),
-    }).then(() => {
-      window.location.reload()
-    }).catch(() => {
-      console.warn('[ClawBench] project switch failed, falling back to same-project switch')
-      navigateToTask()
-    })
-  } else {
-    // Same project: lightweight switch
-    console.log('[ClawBench] same-project navigation, switching to task', taskId)
-    navigateToTask()
-  }
-}
-
 const detailsOpen = ref(false)
 const tocOpen = ref(false)
 const searchOpen = ref(false)
@@ -785,8 +712,6 @@ async function handleSetupComplete() {
     window.addEventListener('navigate-to-commit', handleNavigateToCommit)
     window.addEventListener('quote-sent', playQuoteEmitAnimation)
     window.addEventListener('scroll-to-line', (e) => { scrollToLine(e.detail.line) })
-    window.addEventListener('clawbench-open-session', handleOpenSession)
-    window.addEventListener('clawbench-open-task', handleOpenTask)
     document.addEventListener('click', handleOverflowOutsideClick)
     window.addEventListener('clawbench-theme-change', (e) => {
         const resolved = e.detail
@@ -1228,18 +1153,10 @@ function playQuoteEmitAnimation(e) {
 }
 
 onMounted(async () => {
-    // === 平台标识挂载（含调试日志） ===
+    // === 平台标识挂载 ===
     var _ios = isIOSApp()
-    var _desktop = isDesktopWeb()
-    console.log('[PlatformDetect] isIOSApp:', _ios, '| isDesktopWeb:', _desktop)
-    console.log('[PlatformDetect] Capacitor:', !!window.Capacitor)
-    console.log('[PlatformDetect] webkit.messageHandlers:', !!(window.webkit && window.webkit.messageHandlers))
-    console.log('[PlatformDetect] userAgent:', navigator.userAgent)
     if (_ios) {
         document.body.classList.add('ios-app')
-    }
-    if (_desktop) {
-        document.body.classList.add('desktop-web')
     }
 
     applyTheme(theme.value)
@@ -1258,18 +1175,8 @@ onMounted(async () => {
     if (resp.ok) {
         isAuthenticated.value = true
     } else if (resp.status === 401 || resp.status === 403) {
-        if (isAppMode.value && window.AndroidNative?.getPassword?.()) {
-            const savedPwd = window.AndroidNative.getPassword()
-            if (savedPwd) {
-                try {
-                    const loginRes = await fetch('/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: savedPwd }) })
-                    if (loginRes.ok) {
-                        isAuthenticated.value = true
-                        if (window.AndroidNative?.setSSHPassword) window.AndroidNative.setSSHPassword(savedPwd)
-                    } else { isAuthenticated.value = false; return }
-                } catch (_) { isAuthenticated.value = false; return }
-            } else { isAuthenticated.value = false; return }
-        } else { isAuthenticated.value = false; return }
+        isAuthenticated.value = false
+        return
     } else {
         isAuthenticated.value = false
         if (isAppMode.value) {
@@ -1304,8 +1211,6 @@ onMounted(async () => {
     window.addEventListener('navigate-to-commit', handleNavigateToCommit)
     window.addEventListener('quote-sent', playQuoteEmitAnimation)
     window.addEventListener('scroll-to-line', (e) => { scrollToLine(e.detail.line) })
-    window.addEventListener('clawbench-open-session', handleOpenSession)
-    window.addEventListener('clawbench-open-task', handleOpenTask)
     document.addEventListener('click', handleOverflowOutsideClick)
     window.addEventListener('clawbench-theme-change', (e) => {
         const resolved = e.detail
@@ -1332,9 +1237,6 @@ onMounted(async () => {
     loadSessionsOnce()
     if (isAppMode.value) syncToNative().catch(() => {})
     // Resume Android log capture if previously enabled
-    if (isAppMode.value && localConfig.androidLogCapture) {
-      try { if (window.AndroidNative?.startLogCapture) window.AndroidNative.startLogCapture() } catch {}
-    }
     loadSSHInfo().catch(() => {})
     loadTerminalStatus().catch(() => {})
     try { await store.loadFiles('') } catch (_) {
@@ -1386,54 +1288,6 @@ onMounted(async () => {
       } catch (_) {}
     }
 
-    // Check AndroidNative bridge for cold-start pending navigation
-    // Also poll briefly in case CustomEvent was dispatched while WebView was paused
-    if (isAppMode.value && window.AndroidNative?.getPendingNavigation) {
-      let pollCleared = false
-      const pollPendingNav = () => {
-        try {
-          const nav = window.AndroidNative.getPendingNavigation()
-          console.log('[ClawBench] getPendingNavigation poll result:', nav)
-          if (nav) {
-            const parsed = JSON.parse(nav)
-            const { sessionId, taskId, executionId, projectPath } = parsed
-            if (taskId) {
-              // Task notification navigation
-              pollCleared = true
-              if (projectPath && projectPath !== store.state.projectRoot) {
-                localStorage.setItem('clawbenchPendingNav', JSON.stringify({ taskId, executionId }))
-                fetch('/api/project', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ path: projectPath }),
-                }).then(() => window.location.reload())
-              } else {
-                processPendingTaskNav(taskId, executionId)
-              }
-            } else if (sessionId) {
-              // Session notification navigation
-              // Navigation data found — stop polling
-              pollCleared = true
-              if (projectPath && projectPath !== store.state.projectRoot) {
-                // Need to switch project first — use hot switch instead of reload
-                hotSwitchProject(projectPath, sessionId)
-              } else {
-                processPendingSessionNav(sessionId)
-              }
-            }
-          }
-        } catch (_) {}
-      }
-      // Poll immediately and then every 500ms for up to 3 seconds
-      pollPendingNav()
-      let pollCount = 0
-      const pollInterval = setInterval(() => {
-        if (pollCleared) { clearInterval(pollInterval); return }
-        pollPendingNav()
-        pollCount++
-        if (pollCount >= 6) clearInterval(pollInterval) // 3 seconds total
-      }, 500)
-    }
 })
 
 // 悬浮输入框发送消息处理
@@ -1454,8 +1308,6 @@ onUnmounted(() => {
     window.removeEventListener('open-file-overlay', handleOpenFileOverlay)
     window.removeEventListener('navigate-to-commit', handleNavigateToCommit)
     window.removeEventListener('quote-sent', playQuoteEmitAnimation)
-    window.removeEventListener('clawbench-open-session', handleOpenSession)
-    window.removeEventListener('clawbench-open-task', handleOpenTask)
     document.removeEventListener('click', handleOverflowOutsideClick)
     document.removeEventListener('focusin', handleFocus)
     document.removeEventListener('focusout', handleBlur)

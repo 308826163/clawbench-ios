@@ -353,7 +353,7 @@ func generateSessionID() string {
 // Only returns sessions with session_type='chat' (excludes scheduled sessions).
 func GetSessions(projectPath, backend string) ([]model.ChatSession, error) {
 	sessions := []model.ChatSession{}
-	query := `SELECT s.id, s.title, s.backend, s.agent_id, s.agent_source, s.model, s.session_type, s.source_session_id, s.created_at, s.updated_at, s.last_read_at,
+	query := `SELECT s.id, s.title, s.backend, s.agent_id, s.agent_source, s.model, s.model_display_name, s.session_type, s.source_session_id, s.created_at, s.updated_at, s.last_read_at,
 		COALESCE(unread.cnt, 0) AS unread_count
 		FROM chat_sessions s
 		LEFT JOIN (
@@ -383,7 +383,8 @@ func GetSessions(projectPath, backend string) ([]model.ChatSession, error) {
 		var s model.ChatSession
 		var lastRead sql.NullTime
 		var sourceSessionID sql.NullString
-		if err := rows.Scan(&s.ID, &s.Title, &s.Backend, &s.AgentID, &s.AgentSource, &s.Model, &s.SessionType, &sourceSessionID, &s.CreatedAt, &s.UpdatedAt, &lastRead, &s.UnreadCount); err != nil {
+		var modelDisplayName sql.NullString
+		if err := rows.Scan(&s.ID, &s.Title, &s.Backend, &s.AgentID, &s.AgentSource, &s.Model, &modelDisplayName, &s.SessionType, &sourceSessionID, &s.CreatedAt, &s.UpdatedAt, &lastRead, &s.UnreadCount); err != nil {
 			return nil, err
 		}
 		if lastRead.Valid {
@@ -391,6 +392,9 @@ func GetSessions(projectPath, backend string) ([]model.ChatSession, error) {
 		}
 		if sourceSessionID.Valid {
 			s.SourceSessionID = sourceSessionID.String
+		}
+		if modelDisplayName.Valid {
+			s.ModelDisplayName = modelDisplayName.String
 		}
 		sessions = append(sessions, s)
 	}
@@ -415,7 +419,7 @@ func GetSessionsPaged(projectPath, backend string, limit int, cursor string, cur
 	}
 
 	// Build main query with cursor and limit+1
-	query := `SELECT s.id, s.title, s.backend, s.agent_id, s.agent_source, s.model, s.session_type, s.source_session_id, s.created_at, s.updated_at, s.last_read_at,
+	query := `SELECT s.id, s.title, s.backend, s.agent_id, s.agent_source, s.model, s.model_display_name, s.session_type, s.source_session_id, s.created_at, s.updated_at, s.last_read_at,
 		COALESCE(unread.cnt, 0) AS unread_count
 		FROM chat_sessions s
 		LEFT JOIN (
@@ -451,8 +455,12 @@ func GetSessionsPaged(projectPath, backend string, limit int, cursor string, cur
 		var s model.ChatSession
 		var lastRead sql.NullTime
 		var sourceSessionID sql.NullString
-		if err := rows.Scan(&s.ID, &s.Title, &s.Backend, &s.AgentID, &s.AgentSource, &s.Model, &s.SessionType, &sourceSessionID, &s.CreatedAt, &s.UpdatedAt, &lastRead, &s.UnreadCount); err != nil {
+		var modelDisplayName sql.NullString
+		if err := rows.Scan(&s.ID, &s.Title, &s.Backend, &s.AgentID, &s.AgentSource, &s.Model, &modelDisplayName, &s.SessionType, &sourceSessionID, &s.CreatedAt, &s.UpdatedAt, &lastRead, &s.UnreadCount); err != nil {
 			return nil, false, err
+		}
+		if modelDisplayName.Valid {
+			s.ModelDisplayName = modelDisplayName.String
 		}
 		if lastRead.Valid {
 			s.LastReadAt = &lastRead.Time
@@ -543,7 +551,8 @@ func GetSessionModel(sessionID string) string {
 // Called when the user selects a different model so that subsequent loads
 // restore the user's choice instead of the agent default.
 // Uses model ID mapping to normalize ACP model IDs to unified IDs.
-func UpdateSessionModel(sessionID, modelID string) error {
+// displayName is the human-readable model name (e.g. "mimo") for UI display.
+func UpdateSessionModel(sessionID, modelID string, displayName string) error {
 	if sessionID == "" || modelID == "" {
 		return nil
 	}
@@ -551,13 +560,14 @@ func UpdateSessionModel(sessionID, modelID string) error {
 	// 使用映射表获取统一 ID
 	unifiedID := model.GetUnifiedModelID(modelID)
 
-	// 存储统一 ID
-	_, err := DB.Exec("UPDATE chat_sessions SET model = ? WHERE id = ?", unifiedID, sessionID)
+	// 存储统一 ID 和显示名称
+	_, err := DB.Exec("UPDATE chat_sessions SET model = ?, model_display_name = ? WHERE id = ?", unifiedID, displayName, sessionID)
 	if err != nil {
 		slog.Error("failed to update session model",
 			"session_id", sessionID,
 			"model_id", modelID,
 			"unified_id", unifiedID,
+			"display_name", displayName,
 			"error", err)
 		return err
 	}
@@ -565,7 +575,8 @@ func UpdateSessionModel(sessionID, modelID string) error {
 	slog.Debug("session model updated",
 		"session_id", sessionID,
 		"original_id", modelID,
-		"unified_id", unifiedID)
+		"unified_id", unifiedID,
+		"display_name", displayName)
 
 	return nil
 }

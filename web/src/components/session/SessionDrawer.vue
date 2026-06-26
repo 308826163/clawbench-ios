@@ -39,7 +39,7 @@
                 <span v-if="session.sourceSessionId" class="session-item-scheduled">{{ t('session.fromTask') }}</span>
                 <span class="session-item-agent">{{ getAgentIcon(session.agentId) }} {{ getAgentName(session.agentId) }}</span>
                 <span class="session-item-backend">{{ session.backend }}</span>
-                <span v-if="session.model" class="session-item-model">{{ session.model }}</span>
+                <span v-if="getModelDisplayName(session)" class="session-item-model">{{ getModelDisplayName(session) }}</span>
               </div>
             </div>
           </div>
@@ -115,9 +115,9 @@ const listRef = ref(null)
 const sentinelRef = ref(null)
 let observer = null
 const pageSize = computed(() => store.state.chatSessionPageSize || 10)
-const { agents, loadAgents, getAgentIcon, getAgentName, isDefaultAgent, getAgentDefaultModelName, setDefaultAgent } = useAgents()
+const { agents, loadAgents, getAgentIcon, getAgentName, isDefaultAgent, getAgentDefaultModelName, getAgentModel, setDefaultAgent } = useAgents()
 const dialog = useDialog()
-const { runningSessionsVersion } = useSessionIdentity()
+const { runningSessionsVersion, currentModelName } = useSessionIdentity()
 
 // Session count indicator
 const sessionCount = computed(() => store.state.sessionCount)
@@ -133,6 +133,26 @@ const sessionBarColor = computed(() => {
 function agentDefaultModelName(agentId) {
   return getAgentDefaultModelName(agentId)
 }
+
+/** 解析模型显示名称（三级兜底） */
+function getModelDisplayName(session) {
+  // 1. 当前会话用实时状态
+  if (session.id === props.currentSessionId) {
+    return currentModelName.value || session.model || ''
+  }
+  // 2. 数据库有显示名称
+  if (session.modelDisplayName) {
+    return session.modelDisplayName
+  }
+  // 3. 从模型列表查找
+  if (session.agentId && session.model) {
+    const model = getAgentModel(session.agentId, session.model)
+    if (model?.name) return model.name
+  }
+  // 4. 兜底：原始 ID
+  return session.model || ''
+}
+
 const showAgentSelector = ref(false)
 
 async function handleSetDefaultAgent(agentId) {

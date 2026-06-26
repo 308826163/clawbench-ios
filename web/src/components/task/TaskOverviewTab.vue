@@ -169,7 +169,7 @@ const renderedPrompt = computed(() => {
   flex-direction: column;
   height: 100%;
   overflow: hidden;
-  background: var(--bg-primary, #ffffff);
+  background: var(--bg-secondary, #f8f9fa);
 }
 
 .overview-scroll {

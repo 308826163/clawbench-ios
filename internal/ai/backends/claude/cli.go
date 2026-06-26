@@ -59,13 +59,35 @@ func newClaudeBackend() ai.AIBackend {
 	}
 }
 
+// toClaudeAlias converts full Claude model IDs to CLI aliases.
+// Claude CLI only accepts aliases (sonnet, opus, haiku), not full IDs (claude-sonnet-4-6).
+var claudeModelAliases = map[string]string{
+	"claude-sonnet-4-6": "sonnet",
+	"claude-opus-4-6":   "opus",
+	"claude-haiku-4-5":  "haiku",
+	"claude-opus-4-8":   "opus",
+	"claude-sonnet-4-5": "sonnet",
+}
+
+func toClaudeAlias(modelID string) string {
+	if alias, ok := claudeModelAliases[modelID]; ok {
+		return alias
+	}
+	// If already an alias or unknown, return as-is
+	return modelID
+}
+
 // buildClaudeStreamArgs constructs CLI arguments for Claude streaming.
 // When a system prompt is provided, it writes the prompt to a temp file and uses
 // --system-prompt-file instead of --system-prompt to avoid Windows command-line
 // length limits (error: "The filename or extension is too long").
 func buildClaudeStreamArgs(req ai.ChatRequest) ([]string, func()) {
 	args := ai.BuildBaseStreamArgs(req, func(r ai.ChatRequest) []string {
-		return []string{"--verbose"}
+		extra := []string{"--verbose"}
+		if r.Model != "" {
+			extra = append(extra, "--model", toClaudeAlias(r.Model))
+		}
+		return extra
 	})
 
 	// No system prompt → no temp file needed.

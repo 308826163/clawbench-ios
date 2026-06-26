@@ -259,14 +259,15 @@ func AIChat(w http.ResponseWriter, r *http.Request) {
 
 	// Decode request body BEFORE the running check so we can enqueue when busy
 	var req struct {
-		Message        string   `json:"message"`
-		FilePaths      []string `json:"filePaths"`
-		Files          []string `json:"files"`
-		AgentID        string   `json:"agentId"`
-		ModelID        string   `json:"modelId"`
-		ThinkingEffort string   `json:"thinkingEffort"`
-		ModeID         string   `json:"modeId"`
-		Transport      string   `json:"transport"`
+		Message           string   `json:"message"`
+		FilePaths         []string `json:"filePaths"`
+		Files             []string `json:"files"`
+		AgentID           string   `json:"agentId"`
+		ModelID           string   `json:"modelId"`
+		ModelDisplayName  string   `json:"modelDisplayName"`
+		ThinkingEffort    string   `json:"thinkingEffort"`
+		ModeID            string   `json:"modeId"`
+		Transport         string   `json:"transport"`
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, maxChatBodySize)
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -369,8 +370,23 @@ func AIChat(w http.ResponseWriter, r *http.Request) {
 	// Persist user's model selection to session so that subsequent GET requests
 	// return the correct modelId. This ensures the frontend can restore the
 	// user's choice after stream completion instead of resetting to agent default.
+	modelChanged := false
+	currentModel := service.GetSessionModel(sessionID)
+	slog.Info("model debug",
+		"session_id", sessionID,
+		"req_model_id", req.ModelID,
+		"current_model", currentModel)
 	if req.ModelID != "" {
-		service.UpdateSessionModel(sessionID, req.ModelID)
+		// Detect model change: compare with current session model
+		unifiedNew := model.GetUnifiedModelID(req.ModelID)
+		if currentModel != "" && currentModel != unifiedNew {
+			modelChanged = true
+			slog.Info("model changed, will force new CLI session",
+				"session_id", sessionID,
+				"old_model", currentModel,
+				"new_model", unifiedNew)
+		}
+		service.UpdateSessionModel(sessionID, req.ModelID, req.ModelDisplayName)
 	}
 
 	// Persist transport selection for this session so subsequent loads
@@ -495,7 +511,7 @@ func AIChat(w http.ResponseWriter, r *http.Request) {
 		}()
 
 		// Build the first chat request
-		firstChatReq := buildChatRequest(prompt, sessionID, projectPath, backendName, effectiveAgentID, req.ModelID, req.ThinkingEffort, req.ModeID, req.Transport, fileDir)
+		firstChatReq := buildChatRequest(prompt, sessionID, projectPath, backendName, effectiveAgentID, req.ModelID, req.ThinkingEffort, req.ModeID, req.Transport, fileDir, modelChanged)
 
 		// Execute first message
 		result := executeStreamRun(ctx, r, streamCh, projectPath, sessionID, backendName, effectiveAgentID, firstChatReq, fileDir)
@@ -682,7 +698,7 @@ func executeStreamRun(
 // modelOverride, if non-empty, takes precedence over the agent's default model.
 // thinkingEffortOverride, if non-empty, takes precedence over the agent's YAML default.
 // modeOverride, if non-empty, takes precedence over the current ACP session mode.
-func buildChatRequest(prompt, sessionID, projectPath, backendName, agentID, modelOverride, thinkingEffortOverride, modeOverride, transportOverride, fileDir string) ai.ChatRequest {
+func buildChatRequest(prompt, sessionID, projectPath, backendName, agentID, modelOverride, thinkingEffortOverride, modeOverride, transportOverride, fileDir string, forceNewSession ...bool) ai.ChatRequest {
 	systemPrompt := ""
 	agentModel := ""
 	agentCommand := ""
@@ -699,7 +715,8 @@ func buildChatRequest(prompt, sessionID, projectPath, backendName, agentID, mode
 			systemPrompt = strings.ReplaceAll(systemPrompt, "{{PROJECT_PATH}}", projectPath)
 		}
 		if modelOverride != "" {
-			agentModel = modelOverride
+			// Apply model ID mapping to normalize ACP model IDs to unified IDs
+			agentModel = model.GetUnifiedModelID(modelOverride)
 		} else if defaultID := agent.DefaultModelID(); defaultID != "" {
 			agentModel = defaultID
 		}
@@ -724,6 +741,12 @@ func buildChatRequest(prompt, sessionID, projectPath, backendName, agentID, mode
 	effectiveSessionID := sessionID
 	resumeStart := time.Now()
 	resume := service.SessionHasAssistant(sessionID)
+	// Force new session when model changes (CLI mode uses --session to resume,
+	// which would keep the old model. Force new session to use the new model.)
+	if len(forceNewSession) > 0 && forceNewSession[0] {
+		resume = false
+		slog.Info("session: model changed, forcing new session", "session_id", sessionID)
+	}
 	slog.Info("acp perf: buildChatRequest.SessionHasAssistant", "session_id", sessionID, "resume", resume, "elapsed", time.Since(resumeStart))
 	isACP := false
 	if transportOverride != "" {
@@ -819,7 +842,7 @@ func buildChatRequestFromQueue(qMsg model.QueuedMessage, sessionID, projectPath,
 	// so queued messages respect the user's model choice, not just the agent default.
 	sessionModel := service.GetSessionModel(sessionID)
 	sessionTransport := service.GetSessionTransport(sessionID)
-	return buildChatRequest(prompt, sessionID, projectPath, backendName, agentID, sessionModel, "", "", sessionTransport, fileDir)
+	return buildChatRequest(prompt, sessionID, projectPath, backendName, agentID, sessionModel, "", "", sessionTransport, fileDir, false)
 }
 
 // CancelChat handles POST to cancel an ongoing AI stream for a session.

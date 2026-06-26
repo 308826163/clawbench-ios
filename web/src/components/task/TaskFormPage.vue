@@ -1,5 +1,5 @@
 <template>
-  <div class="task-form-page">
+  <div ref="formEl" class="task-form-page">
     <!-- Compact header: breadcrumb -->
     <div class="form-header">
       <TaskBreadcrumb />
@@ -199,13 +199,14 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ChevronDown, Loader2, Save } from 'lucide-vue-next'
 import TaskBreadcrumb from '@/components/task/TaskBreadcrumb.vue'
 import { useAgents } from '@/composables/useAgents'
 import { useTaskForm } from '@/composables/useTaskForm.ts'
 import { humanizeCron } from '@/utils/format.ts'
+import { Keyboard } from '@capacitor/keyboard'
 
 const { t } = useI18n()
 
@@ -326,8 +327,12 @@ async function submit() {
   await _submit()
 }
 
-// Initialize form on mount
-onMounted(() => {
+// 键盘联动：键盘弹出时整体上移表单
+const formEl = ref(null)
+let keyboardShowListener = null
+let keyboardHideListener = null
+
+onMounted(async () => {
   init(props.mode === 'edit' ? props.task : null)
 
   if (props.mode === 'edit' && props.task) {
@@ -345,6 +350,28 @@ onMounted(() => {
   if (agents.value.length === 0) {
     loadAgents()
   }
+
+  // 键盘联动
+  if (formEl.value) {
+    const rect = formEl.value.getBoundingClientRect()
+    const offsetFromBottom = window.innerHeight - rect.bottom
+
+    keyboardShowListener = await Keyboard.addListener('keyboardWillShow', (info) => {
+      const moveUp = info.keyboardHeight - offsetFromBottom
+      setTimeout(() => {
+        formEl.value.style.transform = `translateY(-${Math.max(moveUp, 0)}px)`
+      }, 60)
+    })
+
+    keyboardHideListener = await Keyboard.addListener('keyboardWillHide', () => {
+      formEl.value.style.transform = 'translateY(0)'
+    })
+  }
+})
+
+onBeforeUnmount(() => {
+  keyboardShowListener?.remove()
+  keyboardHideListener?.remove()
 })
 </script>
 
@@ -354,7 +381,8 @@ onMounted(() => {
   flex-direction: column;
   height: 100%;
   overflow: hidden;
-  background: var(--bg-primary, #ffffff);
+  background: var(--bg-secondary, #f8f9fa);
+  transition: transform 0.32s cubic-bezier(0.33, 1, 0.68, 1);
 }
 
 /* Compact header */

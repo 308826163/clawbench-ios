@@ -391,6 +391,17 @@ export async function initSessionFromAPI() {
           const agent = agentsApi.getAgent(data.agentId || '')
           currentTransport.value = agent?.transport || 'cli'
         }
+        // CLI 模式下页面加载时刷新模型列表（ACP 模式不做任何改动）
+        if (currentTransport.value === 'cli' && data.agentId) {
+          fetch(`/api/agents/${data.agentId}/refresh-models`, { method: 'POST' })
+            .then(r => r.ok ? r.json() : null)
+            .then(refreshData => {
+              if (refreshData?.models) {
+                agentsApi.updateAgentField(data.agentId, 'models', refreshData.models)
+              }
+            })
+            .catch(() => {})
+        }
         // Initialize autoApprove from server state
         if (data.autoApprove !== undefined) {
           autoApprove.value = data.autoApprove
@@ -557,7 +568,7 @@ export function useSessionIdentity() {
       await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, filePaths: filePaths || [], modelId: currentModelId.value || undefined, thinkingEffort: currentThinkingEffort.value || undefined, transport: currentTransport.value || undefined }),
+        body: JSON.stringify({ message: text, filePaths: filePaths || [], modelId: currentModelId.value || undefined, modelDisplayName: currentModelName.value || undefined, thinkingEffort: currentThinkingEffort.value || undefined, transport: currentTransport.value || undefined }),
       })
     } catch (err) {
       console.error('Failed to send message:', err)

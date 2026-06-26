@@ -45,11 +45,6 @@ const backendPort = process.env.VITE_BACKEND_PORT || 20000
 const backendProto = process.env.VITE_BACKEND_PROTO || 'https'
 const frontendPort = parseInt(process.env.VITE_FRONTEND_PORT || '20001', 10)
 
-// 平台构建标识：dev 模式两者均为 true（加载全部代码），build 模式按 --mode 剔除
-const buildPlatform = process.env.VITE_BUILD_PLATFORM || 'all'
-const isBuildIOS = buildPlatform === 'ios'
-const isBuildDesktop = buildPlatform === 'desktop'
-
 export default defineConfig({
   plugins: [
     vue(),
@@ -61,10 +56,7 @@ export default defineConfig({
   ],
   root: 'web',
   publicDir: srcAssets,
-  define: {
-    '__BUILD_IOS__': isBuildIOS || buildPlatform === 'all',
-    '__BUILD_DESKTOP__': isBuildDesktop || buildPlatform === 'all',
-  },
+  define: {},
   server: {
     host: process.env.VITE_HOST || '0.0.0.0',
     allowedHosts: ['xulongzhe.top', 'your-domain.com', 'localhost', '127.0.0.1'],
