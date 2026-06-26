@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:ios": "vite build --mode ios",
+    "build:desktop": "vite build --mode desktop",
     "test": "vitest run",
     "preview": "vite preview",
     "test:e2e": "playwright test --config e2e/playwright.config.ts",
