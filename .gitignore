@@ -1,0 +1,93 @@
+# OS
+.DS_Store
+
+# Configuration files (keep local config private)
+config/config.yaml
+*.bak
+.env
+
+# Python (legacy scripts)
+venv/
+__pycache__/
+*.pyc
+
+# Go build output
+/clawbench
+clawbench-dev
+dev-clawbench
+coverage.out
+coverage/
+
+# Runtime
+nohup.out
+
+# Node/Vite
+node_modules/
+vite.log
+public/
+web/coverage/
+web/package.json
+web/package-lock.json
+
+# App runtime data
+.ClawBench/
+.clawbench/
+.smartworkbench/
+*.db
+
+# DeepSeek TUI runtime config
+.deepseek/
+
+# Git worktrees
+.worktrees/
+dist/
+server
+.venv/
+
+# Docs - local only
+docs/promo_rewritten.md
+
+# Private agent configs (user-specific, keep only example template in repo)
+# 智能体配置（用户私有，仓库仅保留示例模板）
+config/agents/*.yaml
+!config/agents/*.yaml.example
+!config/agents/common_prompt.md
+
+# Android build output
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+
+# ACP submodules (local dev only, not tracked in CI)
+acp-go-sdk/
+acp-go-ironpark/
+acp-spec/
+*.jks
+clawbench-release
+.playwright-cli/
+config/config.yaml
+.dev-build/
+
+# Playwright E2E test artifacts
+test-results/
+playwright-report/
+.nyc_output/
+coverage/e2e/
+stdout.log
+/acp-mock
+clawbench-new
+clawbench-test
+
+# Codebuddy runtime
+.codebuddy/worktrees/
+.codebuddy/scheduled_tasks.lock
+
+# Agent skills (local only)
+.agents/
+
+# Compiled test binaries
+*.test
+.bin/
+coverage*.out
+skills-lock.json

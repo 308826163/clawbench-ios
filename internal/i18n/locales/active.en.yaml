@@ -1,0 +1,98 @@
+SessionNotRunning: Session is not running
+SessionStreamNotFound: Session stream not found
+SessionStreamBusy: Session stream is being viewed on another device
+SessionLimitReached: Session limit reached ({{.MaxCount}}), please delete old sessions
+SessionIdRequired: session_id required
+NewSession: New Session
+NewSessionN: New Session {{.N}}
+FileMessage: File Message
+FileTooLarge: File too large
+TextTooLong: Text too long, max {{.MaxChars}} characters
+SummarizeFailed: Summarization failed, please retry later
+SynthesizeFailed: Speech synthesis failed, please retry later
+BackendCreateFailed: "Failed to create AI backend: {{.Error}}"
+StreamStartFailed: "Failed to start streaming: {{.Error}}"
+MethodNotAllowed: Method not allowed
+InvalidRequestBody: Invalid request body
+NotADirectory: Not a directory
+NotAFile: Not a file
+NotAGitRepo: Not a git repository
+NoProjectSelected: no project selected
+AccessDenied: Access denied
+TerminalDisabled: Terminal feature is disabled
+TerminalError: Terminal error
+TerminalCwdInvalid: Terminal working directory is invalid
+Unauthorized: unauthorized
+InvalidPath: invalid path
+PathTraversal: path traversal detected
+InternalError: internal server error
+SessionNotFound: session not found
+NoAgentsAvailable: no agents available
+MessageOrFilesRequired: Message or files required
+TextRequired: text is required
+JobIdRequired: job ID required
+FileNotFound: "File not found: {{.Path}}"
+ClientIdRequired: clientId required
+FileWatcherNotAvailable: file watcher not available
+InvalidRole: Invalid role
+MessageIdRequired: messageId required
+InvalidRequest: Invalid request
+SessionBackendNotFound: Session backend not found
+FileNotFoundShort: File not found
+BrokenSymlink: "Broken symlink: target not found ({{.Target}})"
+DirectoryNotFound: Directory not found
+InvalidFilePath: Invalid file path
+FileTooLargeOrInvalid: File too large or invalid form
+NoFileProvided: No file provided
+FileMustHaveExtension: File must have an extension
+FileTypeNotAllowed: "File type not allowed: {{.Ext}}"
+MissingPathOrName: Missing path or name
+MissingPath: Missing path
+MissingName: Missing name
+FileAlreadyExists: File already exists
+MissingPathOrDest: Missing path or dest
+ArchiveFailed: Failed to create archive
+MissingShaOrPath: missing sha or path
+MissingSha: missing sha
+NotAGitRepoShort: not a git repository
+InvalidPortNumber: "Invalid port number: {{.Port}}"
+InvalidPortInQuery: Invalid port number in query
+TaskIdRequired: Task ID required
+TaskNotFound: Task not found
+TaskFieldsRequired: name, cronExpr, agentId, and prompt are required
+TaskAlreadyRunning: Task is already running, please wait for it to finish
+TaskExecutionIdRequired: Execution ID is required
+TaskExecutionNotFound: Execution not found or already finished
+DirectoryNameRequired: Directory name required
+LineNumberOutOfRange: Line number out of range
+InvalidIndex: invalid index
+JobNotFound: job not found
+AgentNotFound: Agent not found
+InvalidModelForAgent: Invalid model for this agent
+InvalidThinkingEffort: Invalid thinking effort level for this agent
+InvalidAgentName: Invalid agent name
+InvalidAgentIcon: Invalid icon
+InvalidAgentSpecialty: Invalid description
+InvalidSystemPrompt: System prompt too long
+SystemPromptOverride: System prompt contains unsafe override instructions
+InvalidSortOrder: Invalid sort order
+InvalidSHA: Invalid commit SHA format
+InvalidBranchName: Invalid branch name
+ModelDiscoveryNotSupported: This agent does not support model discovery
+ModelDiscoveryFailed: Model discovery returned no results
+CLINotFound: CLI tool not found, please install it first
+CustomURLOpenAIFormat: Custom URL for OpenAI format should end with /chat/completions
+CustomURLAnthropicFormat: Custom URL for Anthropic format should end with /v1/messages
+CustomURLInvalid: Invalid URL format
+CustomURLInvalidScheme: URL must start with http:// or https://
+CustomURLInvalidHost: URL is missing a valid hostname
+CustomURLUnrecognizedFormat: URL path must end with /chat/completions (OpenAI) or /v1/messages (Anthropic)
+PushTaskCompleted: AI Task Completed
+PushSessionEnded: AI session ended
+PushScheduledTaskDone: Scheduled task completed
+PushPermissionPending: Approval Required
+NotFound: Not found
+PermissionNotFound: No pending permission request found
+ACPSessionNotFound: ACP session no longer exists on the agent side
+ForkPrefix: "[Fork] "
+Session: Untitled Session

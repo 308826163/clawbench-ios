@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#0d1117</color>
+    <color name="colorPrimaryDark">#010409</color>
+    <color name="colorAccent">#58a6ff</color>
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+
+    <!-- Dialog colors (GitHub dark theme palette) -->
+    <color name="dialog_background">#161b22</color>
+    <color name="dialog_surface">#1c2128</color>
+    <color name="dialog_text_primary">#e6edf3</color>
+    <color name="dialog_text_secondary">#8b949e</color>
+    <color name="dialog_text_hint">#484f58</color>
+    <color name="dialog_input_background">#0d1117</color>
+    <color name="dialog_input_stroke">#30363d</color>
+    <color name="dialog_input_stroke_focused">#58a6ff</color>
+    <color name="dialog_button_positive">#58a6ff</color>
+    <color name="dialog_button_negative">#8b949e</color>
+    <color name="dialog_divider">#21262d</color>
+    <!-- Icon tint for dialog decorative icons -->
+    <color name="dialog_icon_tint">#58a6ff</color>
+
+    <!-- Browser sandbox colors -->
+    <color name="browser_background">#0d1117</color>
+    <color name="browser_toolbar_bg">#161b22</color>
+    <color name="browser_url_bg">#0d1117</color>
+    <color name="browser_url_stroke">#30363d</color>
+    <color name="browser_url_text">#e6edf3</color>
+    <color name="browser_url_hint_color">#484f58</color>
+    <color name="browser_icon_tint">#8b949e</color>
+</resources>

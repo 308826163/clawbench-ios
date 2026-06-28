@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ClawBench</string>
+    <string name="dialog_title">连接服务器</string>
+    <string name="dialog_positive">连接</string>
+    <string name="dialog_negative">取消</string>
+    <string name="error_no_url">请输入服务器地址</string>
+    <string name="error_connection_failed">无法连接服务器</string>
+    <string name="settings_title">服务器设置</string>
+    <string name="download_started">开始下载</string>
+    <string name="download_failed">下载失败</string>
+    <string name="download_completed">下载完成</string>
+    <string name="download_description">ClawBench 文件下载</string>
+    <string name="ssh_notification_reconnecting">后台连接断开，正在重连…</string>
+    <string name="ssh_notification_recovering">后台连接已恢复</string>
+    <!-- Browser sandbox -->
+    <string name="browser_back">返回</string>
+    <string name="browser_refresh">刷新</string>
+    <string name="browser_clear_data">清除数据</string>
+    <string name="browser_url_hint">输入地址</string>
+    <string name="browser_clear_title">清除浏览数据</string>
+    <string name="browser_clear_message">将清除所有 Cookie、缓存和网站数据，当前登录状态将丢失。</string>
+    <string name="browser_clear_positive">清除</string>
+    <string name="browser_clear_negative">取消</string>
+    <string name="browser_clear_done">浏览数据已清除</string>
+    <string name="browser_close">关闭</string>
+    <string name="browser_ssl_title">SSL 证书验证失败</string>
+    <string name="browser_ssl_message">该站点使用了不受信任的证书，连接可能不安全。\n\n仅当您信任该站点时才继续。</string>
+    <string name="browser_ssl_positive">信任并继续</string>
+    <string name="browser_ssl_negative">取消连接</string>
+    <string name="press_again_to_exit">再按一次退出应用</string>
+</resources>

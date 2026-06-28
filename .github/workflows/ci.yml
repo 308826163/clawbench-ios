@@ -1,0 +1,319 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  golangci-lint:
+    name: Lint (Go)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v7
+        with:
+          version: v2.12.2
+          args: --timeout=5m
+          only-new-issues: true
+
+  test:
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Go test
+        run: go test ./...
+
+      - name: Go build
+        run: go build ./cmd/server
+
+  coverage-go:
+    name: Coverage Gate (Go)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download main baseline
+        if: github.event_name == 'pull_request'
+        uses: dawidd6/action-download-artifact@v8
+        with:
+          workflow: ci.yml
+          branch: main
+          name: main-go-coverage
+          path: .clawbench/baseline/
+        continue-on-error: true
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Run coverage gate check
+        run: |
+          set +e
+          ./scripts/check-go-coverage.sh
+          exit_code=$?
+          set -e
+          if [ $exit_code -eq 2 ]; then
+            echo "::warning::Tier 1 (Project) coverage gate failed — baseline drift, non-blocking"
+            exit 0
+          fi
+          exit $exit_code
+
+      - name: Upload coverage profile
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: main-go-coverage
+          path: coverage.out
+          retention-days: 90
+
+  lint-frontend:
+    name: Lint (Frontend)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: ESLint
+        working-directory: web
+        run: npx eslint src/
+
+  typecheck-frontend:
+    name: Typecheck (Frontend)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+  coverage-frontend:
+    name: Coverage Gate (Frontend)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download main baseline
+        if: github.event_name == 'pull_request'
+        uses: dawidd6/action-download-artifact@v8
+        with:
+          workflow: ci.yml
+          branch: main
+          name: main-frontend-coverage
+          path: .clawbench/baseline/
+        continue-on-error: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run coverage gate check
+        run: ./scripts/check-frontend-coverage.sh
+
+      - name: Upload coverage data
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: main-frontend-coverage
+          path: |
+            coverage/coverage-summary.json
+            coverage/coverage-final.json
+          retention-days: 90
+
+  coverage-android:
+    name: Coverage Gate (Android)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download main baseline
+        if: github.event_name == 'pull_request'
+        uses: dawidd6/action-download-artifact@v8
+        with:
+          workflow: ci.yml
+          branch: main
+          name: main-android-coverage
+          path: .clawbench/baseline/
+        continue-on-error: true
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK components
+        run: sdkmanager "platforms;android-34" "build-tools;34.0.0"
+
+      - name: Run coverage gate check
+        run: ./scripts/check-android-coverage.sh
+
+      - name: Upload coverage data
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: main-android-coverage
+          path: android/app/build/reports/jacoco/jacocoTestReport/jacocoTestReport.xml
+          retention-days: 90
+
+  build-frontend:
+    name: Build Frontend
+    runs-on: ubuntu-latest
+    needs: [lint-frontend, typecheck-frontend, coverage-frontend]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK components
+        run: sdkmanager "platforms;android-34" "build-tools;34.0.0"
+
+      - name: Build debug APK
+        working-directory: android
+        run: |
+          VERSION_CODE=$(git rev-list --count HEAD)
+          VERSION_NAME=$(git describe --tags --always 2>/dev/null || echo "dev")
+          ./gradlew assembleDebug -PversionCode=$VERSION_CODE -PversionName=$VERSION_NAME
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug.apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+
+  e2e:
+    name: E2E Tests (Playwright)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'run-e2e')
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Build Go binary
+        run: go build -o clawbench ./cmd/server
+
+      - name: Build ACP mock agent
+        run: go build -o acp-mock ./cmd/acp-mock
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Run E2E tests
+        run: npx playwright test --config e2e/playwright.config.ts
+        env:
+          E2E_PORT: '20100'
+          E2E_PASSWORD: 'e2e-test-password'
+
+      - name: Generate E2E coverage report
+        if: always()
+        run: ./scripts/check-e2e-coverage.sh
+
+      - name: Upload E2E coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-coverage
+          path: coverage/e2e/
+          retention-days: 90
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30
+
+      - name: Upload test results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results
+          path: test-results/
+          retention-days: 7
