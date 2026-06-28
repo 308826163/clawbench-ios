@@ -6,7 +6,7 @@ const config: CapacitorConfig = {
   webDir: 'public',
   server: {
     // 开发时连接到本地服务器
-    url: 'http://122.51.49.12:20005',
+    url: 'http://192.168.0.106:20000',
     cleartext: true, // 允许 HTTP 连接
   },
   ios: {
